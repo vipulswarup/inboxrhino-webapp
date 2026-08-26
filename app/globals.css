@@ -1,8 +1,12 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #efede7;
-  --foreground: #1c1917;
+  --brand-ink: #1c1917;
+  --brand-cream: #f7f4ef;
+  --brand-cream-deep: #f4f1ea;
+  --brand-teal: #0f3d3e;
+  --background: var(--brand-cream-deep);
+  --foreground: var(--brand-ink);
 }
 
 @theme inline {
@@ -40,6 +44,6 @@ a:focus-visible,
 }
 
 ::selection {
-  background: #cfe2df;
-  color: #153b3a;
+  background: rgb(15 61 62 / 20%);
+  color: var(--brand-ink);
 }

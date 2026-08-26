@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Image from 'next/image';
+import { type CSSProperties, useMemo, useState } from 'react';
+import { brandColors } from './brand';
 
 export type Message = {
   id: string;
@@ -103,8 +105,10 @@ export function createSafeEmailDocument(html: string) {
 function Logo() {
   return (
     <div className="flex items-center gap-2.5" aria-label="InboxRhino">
-      <span className="grid size-8 place-items-center rounded-[10px] bg-[#0f3d3e] text-[11px] font-black tracking-tight text-white shadow-sm">IR</span>
-      <span className="hidden text-[15px] font-bold tracking-[-0.02em] text-stone-900 sm:block">InboxRhino</span>
+      <span className="grid size-9 place-items-center rounded-[11px] border border-[#1C1917]/10 bg-[#F7F4EF] shadow-sm">
+        <Image src="/favicon.svg" width={30} height={30} alt="" priority />
+      </span>
+      <span className="hidden text-[15px] font-bold tracking-[-0.02em] text-[#1C1917] sm:block">InboxRhino</span>
     </div>
   );
 }
@@ -119,6 +123,12 @@ export function MessageViewer() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const activeMessage = useMemo(() => messages.find((message) => message.id === activeId) ?? messages[0], [activeId]);
+  const palette = {
+    '--brand-ink': brandColors.ink,
+    '--brand-cream': brandColors.cream,
+    '--brand-cream-deep': brandColors.creamDeep,
+    '--brand-teal': brandColors.teal,
+  } as CSSProperties;
 
   const selectMessage = (messageId: string) => {
     setActiveId(messageId);
@@ -133,9 +143,9 @@ export function MessageViewer() {
   };
 
   return (
-    <main className="min-h-screen bg-[#efede7] p-0 text-stone-900 lg:p-3">
-      <div className="mx-auto min-h-screen max-w-[1600px] overflow-hidden bg-white shadow-[0_8px_40px_rgba(28,25,23,0.08)] lg:min-h-[calc(100vh-24px)] lg:rounded-[22px] lg:border lg:border-stone-200">
-        <header className="flex h-16 items-center justify-between border-b border-stone-200 px-4 sm:px-5">
+    <main style={palette} className="min-h-screen bg-[var(--brand-cream-deep)] p-0 text-[var(--brand-ink)] lg:p-3">
+      <div className="mx-auto min-h-screen max-w-[1600px] overflow-hidden bg-[#FFFEFC] shadow-[0_8px_40px_rgba(28,25,23,0.08)] lg:min-h-[calc(100vh-24px)] lg:rounded-[22px] lg:border lg:border-[#1C1917]/10">
+        <header className="flex h-16 items-center justify-between border-b border-[#1C1917]/10 bg-[var(--brand-cream)] px-4 sm:px-5">
           <div className="flex items-center gap-6">
             <Logo />
             <nav aria-label="Breadcrumb" className="hidden items-center gap-2 text-sm text-stone-500 md:flex">
@@ -145,29 +155,29 @@ export function MessageViewer() {
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-600 sm:flex"><span className="size-1.5 rounded-full bg-emerald-500" />3 of 33 emails</div>
             <button aria-label="Open help" className="grid size-9 place-items-center rounded-full border border-stone-200 text-sm font-semibold text-stone-500 transition hover:bg-stone-50">?</button>
-            <button aria-label="Open account menu" className="grid size-9 place-items-center rounded-full bg-[#1c1917] text-xs font-bold text-white">VS</button>
+            <button aria-label="Open account menu" className="grid size-9 place-items-center rounded-full bg-[var(--brand-ink)] text-xs font-bold text-[#F7F4EF]">VS</button>
           </div>
         </header>
 
         <div className="grid min-h-[calc(100vh-64px)] grid-cols-1 md:grid-cols-[72px_330px_minmax(0,1fr)] lg:min-h-[calc(100vh-88px)]">
-          <aside className="hidden flex-col items-center border-r border-stone-200 bg-[#faf9f6] py-4 md:flex">
+          <aside className="hidden flex-col items-center border-r border-[#1C1917]/10 bg-[var(--brand-cream)] py-4 md:flex">
             <nav aria-label="Primary navigation" className="flex flex-1 flex-col items-center gap-2">
-              <button aria-label="Inboxes" className="grid size-10 place-items-center rounded-xl bg-[#dcebea] font-semibold text-[#0f3d3e]"><NavIcon>▱</NavIcon></button>
+              <button aria-label="Inboxes" className="grid size-10 place-items-center rounded-xl bg-[var(--brand-teal)] font-semibold text-[#F7F4EF]"><NavIcon>▱</NavIcon></button>
               <button aria-label="API keys" className="grid size-10 place-items-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"><NavIcon>⌁</NavIcon></button>
               <button aria-label="Usage" className="grid size-10 place-items-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"><NavIcon>⌁</NavIcon></button>
             </nav>
             <button aria-label="Settings" className="grid size-10 place-items-center rounded-xl text-stone-500 transition hover:bg-stone-100"><NavIcon>⚙</NavIcon></button>
           </aside>
 
-          <section aria-label="Messages" className="hidden border-r border-stone-200 bg-[#fcfbf8] md:block">
+          <section aria-label="Messages" className="hidden border-r border-[#1C1917]/10 bg-[var(--brand-cream)] md:block">
             <div className="border-b border-stone-200 px-5 pb-4 pt-5">
               <div className="mb-4 flex items-start justify-between gap-3">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#477675]">Inbox</p><h1 className="mt-1 text-lg font-bold tracking-[-0.025em]">cheerful-panda-x7k2</h1></div>
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--brand-teal)]">Inbox</p><h1 className="mt-1 text-lg font-bold tracking-[-0.025em]">cheerful-panda-x7k2</h1></div>
                 <button aria-label="Inbox actions" className="grid size-8 place-items-center rounded-lg text-xl leading-none text-stone-400 hover:bg-stone-100">···</button>
               </div>
               <button type="button" onClick={copyAddress} className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-left shadow-sm transition hover:border-stone-300">
                 <span className="min-w-0 truncate font-mono text-[11px] text-stone-600">cheerful-panda-x7k2@test.inboxrhino.in</span>
-                <span aria-live="polite" className="shrink-0 text-[11px] font-bold text-[#0f3d3e]">{copied ? 'Copied' : 'Copy'}</span>
+                <span aria-live="polite" className="shrink-0 text-[11px] font-bold text-[var(--brand-teal)]">{copied ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
             <div className="flex items-center justify-between px-5 py-3 text-xs text-stone-500"><span>{messages.length} messages</span><button className="font-semibold text-stone-600 hover:text-stone-900">Newest first⌄</button></div>
@@ -176,9 +186,9 @@ export function MessageViewer() {
                 const isActive = activeMessage.id === message.id;
                 return (
                   <div role="listitem" key={message.id}>
-                    <button type="button" onClick={() => selectMessage(message.id)} aria-current={isActive ? 'true' : undefined} className={`w-full rounded-xl border px-3 py-3.5 text-left transition ${isActive ? 'border-[#b9d3d1] bg-[#edf5f4] shadow-sm' : 'border-transparent hover:bg-stone-100/70'}`}>
+                    <button type="button" onClick={() => selectMessage(message.id)} aria-current={isActive ? 'true' : undefined} className={`w-full rounded-xl border px-3 py-3.5 text-left transition ${isActive ? 'border-[#0F3D3E]/25 bg-[#FFFEFC] shadow-sm' : 'border-transparent hover:bg-[#F4F1EA]'}`}>
                       <div className="flex items-center gap-2">
-                        {message.unread ? <span aria-label="Unread" className="size-1.5 shrink-0 rounded-full bg-[#0f766e]" /> : null}
+                        {message.unread ? <span aria-label="Unread" className="size-1.5 shrink-0 rounded-full bg-[var(--brand-teal)]" /> : null}
                         <span className={`min-w-0 flex-1 truncate text-sm ${message.unread ? 'font-bold' : 'font-semibold'}`}>{message.senderName}</span><time className="shrink-0 text-[11px] text-stone-500">{message.receivedAt}</time>
                       </div>
                       <p className={`mt-1 truncate text-[13px] ${message.unread ? 'font-semibold text-stone-800' : 'text-stone-700'}`}>{message.subject}</p>
@@ -193,13 +203,13 @@ export function MessageViewer() {
 
           <section aria-label="Message viewer" className="min-w-0 bg-white">
             <div className="border-b border-stone-200 px-4 py-4 sm:px-7 sm:py-5">
-              <div className="mb-3 flex items-center justify-between gap-4 md:hidden"><button className="text-sm font-semibold text-[#0f3d3e]">← Messages</button><span className="text-xs text-stone-500">1 of {messages.length}</span></div>
+              <div className="mb-3 flex items-center justify-between gap-4 md:hidden"><button className="text-sm font-semibold text-[var(--brand-teal)]">← Messages</button><span className="text-xs text-stone-500">1 of {messages.length}</span></div>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2"><span className="rounded-full bg-[#e7f1f0] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#0f5b58]">Received</span><time className="text-xs text-stone-500">{activeMessage.dateLabel}</time></div>
+                  <div className="mb-2 flex items-center gap-2"><span className="rounded-full bg-[#F4F1EA] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--brand-teal)]">Received</span><time className="text-xs text-stone-500">{activeMessage.dateLabel}</time></div>
                   <h2 className="truncate text-xl font-bold tracking-[-0.03em] text-stone-950 sm:text-2xl">{activeMessage.subject}</h2>
                   <button type="button" onClick={() => setDetailsOpen((open) => !open)} aria-expanded={detailsOpen} className="mt-3 flex items-center gap-2 text-left text-sm">
-                    <span className="grid size-8 place-items-center rounded-full bg-[#1c1917] text-[11px] font-bold text-white">{activeMessage.senderName.slice(0, 2).toUpperCase()}</span>
+                    <span className="grid size-8 place-items-center rounded-full bg-[var(--brand-ink)] text-[11px] font-bold text-[#F7F4EF]">{activeMessage.senderName.slice(0, 2).toUpperCase()}</span>
                     <span><span className="font-semibold">{activeMessage.senderName}</span><span className="ml-1 text-stone-500">&lt;{activeMessage.senderEmail}&gt;</span></span><span aria-hidden="true" className="text-stone-400">⌄</span>
                   </button>
                 </div>
@@ -215,13 +225,13 @@ export function MessageViewer() {
             <div className="flex items-center justify-between border-b border-stone-200 px-4 sm:px-7">
               <div role="tablist" aria-label="Message format" className="flex gap-5">
                 {(['html', 'text', 'headers'] as Tab[]).map((tab) => (
-                  <button key={tab} role="tab" type="button" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`border-b-2 py-3 text-xs font-bold capitalize transition ${activeTab === tab ? 'border-[#0f5b58] text-[#0f5b58]' : 'border-transparent text-stone-500 hover:text-stone-900'}`}>{tab}</button>
+                  <button key={tab} role="tab" type="button" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`border-b-2 py-3 text-xs font-bold capitalize transition ${activeTab === tab ? 'border-[var(--brand-teal)] text-[var(--brand-teal)]' : 'border-transparent text-stone-500 hover:text-stone-900'}`}>{tab}</button>
                 ))}
               </div>
               {activeTab === 'html' ? <span className="hidden items-center gap-1.5 text-[11px] text-stone-500 sm:flex"><span className="size-1.5 rounded-full bg-emerald-500" /> Remote images blocked</span> : null}
             </div>
 
-            <div className="bg-[#f5f3ee] p-3 sm:p-6">
+            <div className="bg-[var(--brand-cream-deep)] p-3 sm:p-6">
               {activeTab === 'html' ? (
                 <div role="tabpanel" aria-label="HTML preview" className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
                   <div className="flex h-9 items-center justify-between border-b border-stone-200 bg-stone-50 px-3 text-[10px] font-medium text-stone-500"><span>Sandboxed preview</span><span>560 px</span></div>

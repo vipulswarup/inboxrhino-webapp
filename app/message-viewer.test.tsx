@@ -1,11 +1,22 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
+import { brandColors } from './brand';
 import { createSafeEmailDocument, emailPreviewCsp, MessageViewer } from './message-viewer';
 
 afterEach(cleanup);
 
 describe('MessageViewer', () => {
+  it('uses the documented logo palette as the console color source', () => {
+    const { container } = render(<MessageViewer />);
+    const app = container.querySelector('main');
+
+    expect(app).toHaveStyle(`--brand-ink: ${brandColors.ink}`);
+    expect(app).toHaveStyle(`--brand-cream: ${brandColors.cream}`);
+    expect(app).toHaveStyle(`--brand-cream-deep: ${brandColors.creamDeep}`);
+    expect(container.querySelector('img[src="/favicon.svg"]')).toBeInTheDocument();
+  });
+
   it('opens the newest message in a locked-down iframe', () => {
     render(<MessageViewer />);
 
