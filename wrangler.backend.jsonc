@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "inboxrhino-api",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "routes": [
+    { "pattern": "api.inboxrhino.in", "custom_domain": true },
+    { "pattern": "files.inboxrhino.in", "custom_domain": true },
+    { "pattern": "view.inboxrhino.in", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "inboxrhino-prod",
+      "database_id": "ae8c2114-b1f9-4cb6-85a5-87687db31974",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MAIL",
+      "bucket_name": "inboxrhino-mail"
+    }
+  ],
+  "triggers": {
+    "crons": ["17 2 * * *"]
+  }
+}

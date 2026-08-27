@@ -1,0 +1,283 @@
+openapi: 3.1.0
+info:
+  title: InboxRhino API
+  version: 1.0.0
+  description: Receive-only inboxes for automated tests.
+servers:
+  - url: https://api.inboxrhino.in
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service]
+                properties:
+                  status: { const: ok }
+                  service: { const: inboxrhino-api }
+  /v1/inboxes:
+    post:
+      operationId: createInbox
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string, minLength: 8, maxLength: 200 }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                prefix:
+                  type: string
+                  minLength: 3
+                  maxLength: 40
+                  pattern: '^[a-z0-9](?:[a-z0-9-]{1,38})[a-z0-9]$'
+      responses:
+        '201': { $ref: '#/components/responses/InboxResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+        '422': { $ref: '#/components/responses/ErrorResponse' }
+    get:
+      operationId: listInboxes
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Active inboxes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, next_cursor]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Inbox' } }
+                  next_cursor: { type: [string, 'null'] }
+  /v1/inboxes/{inbox_id}:
+    parameters:
+      - $ref: '#/components/parameters/InboxId'
+    get:
+      operationId: getInbox
+      responses:
+        '200': { $ref: '#/components/responses/InboxResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      operationId: deleteInbox
+      responses:
+        '204': { description: Inbox and retained messages deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /v1/inboxes/{inbox_id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/InboxId'
+    get:
+      operationId: listOrWaitForMessages
+      description: Returns matching retained messages immediately, otherwise waits up to 180 seconds when wait_seconds is supplied.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - in: query
+          name: wait_seconds
+          schema: { type: integer, minimum: 0, maximum: 180, default: 0 }
+        - in: query
+          name: subject
+          description: Case-insensitive substring match.
+          schema: { type: string }
+        - in: query
+          name: sender
+          description: Exact case-insensitive sender-address match.
+          schema: { type: string, format: email }
+        - in: query
+          name: sender_domain
+          description: Exact case-insensitive sender-domain match.
+          schema: { type: string }
+        - in: query
+          name: received_after
+          schema: { type: string, format: date-time }
+        - in: query
+          name: include
+          description: content is accepted only with limit=1.
+          schema: { type: string, enum: [content] }
+      responses:
+        '200':
+          description: Matching messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, next_cursor]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Message' } }
+                  next_cursor: { type: [string, 'null'] }
+        '204': { description: Wait ended without a matching message }
+        '429': { $ref: '#/components/responses/ErrorResponse' }
+  /v1/messages/{message_id}:
+    parameters:
+      - in: path
+        name: message_id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getMessage
+      responses:
+        '200':
+          description: Complete parsed message
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Message' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      operationId: deleteMessage
+      responses:
+        '204': { description: Message and stored objects deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /v1/attachments/{attachment_id}:
+    parameters:
+      - in: path
+        name: attachment_id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: downloadAttachment
+      responses:
+        '200':
+          description: Forced attachment download; content is not malware-scanned.
+          content:
+            application/octet-stream: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /v1/usage:
+    get:
+      operationId: getUsage
+      responses:
+        '200':
+          description: Current free-tier usage and limits
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usage' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ir_live API key
+  parameters:
+    InboxId:
+      in: path
+      name: inbox_id
+      required: true
+      schema: { type: string }
+    Limit:
+      in: query
+      name: limit
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    Cursor:
+      in: query
+      name: cursor
+      schema: { type: string }
+  responses:
+    InboxResponse:
+      description: Inbox
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/Inbox' }
+    ErrorResponse:
+      description: API error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Inbox:
+      type: object
+      required: [id, address, local_part, status, created_at]
+      properties:
+        id: { type: string }
+        address: { type: string, format: email }
+        local_part: { type: string }
+        status: { const: active }
+        created_at: { type: string, format: date-time }
+    Attachment:
+      type: object
+      required: [id, filename, content_type, size_bytes, disposition, download_url]
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer }
+        disposition: { type: string, enum: [attachment, inline] }
+        content_id: { type: [string, 'null'] }
+        download_url: { type: string, format: uri }
+    Message:
+      type: object
+      required: [id, inbox_id, from, to, subject, preview, size_bytes, received_at, expires_at]
+      properties:
+        id: { type: string }
+        inbox_id: { type: string }
+        internet_message_id: { type: [string, 'null'] }
+        from:
+          type: object
+          required: [name, address]
+          properties:
+            name: { type: string }
+            address: { type: string, format: email }
+        to: { type: string, format: email }
+        subject: { type: string }
+        preview: { type: string }
+        size_bytes: { type: integer }
+        received_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        text: { type: [string, 'null'] }
+        html: { type: [string, 'null'] }
+        headers:
+          type: array
+          items:
+            type: array
+            prefixItems: [{ type: string }, { type: string }]
+        attachments: { type: array, items: { $ref: '#/components/schemas/Attachment' } }
+    Usage:
+      type: object
+      required: [plan, period, inboxes, emails]
+      properties:
+        plan: { const: free }
+        period:
+          type: object
+          required: [starts_at, ends_at]
+          properties:
+            starts_at: { type: string, format: date-time }
+            ends_at: { type: string, format: date-time }
+        inboxes: { $ref: '#/components/schemas/Counter' }
+        emails: { $ref: '#/components/schemas/Counter' }
+    Counter:
+      type: object
+      required: [limit, remaining]
+      properties:
+        active: { type: integer }
+        received: { type: integer }
+        limit: { type: integer }
+        remaining: { type: integer }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            request_id: { type: string }

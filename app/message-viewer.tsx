@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { type CSSProperties, useMemo, useState } from 'react';
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { brandColors } from './brand';
 
 export type Message = {
@@ -89,6 +89,51 @@ export const messages: Message[] = [
 
 type Tab = 'html' | 'text' | 'headers';
 
+type ApiInbox = { id: string; address: string; local_part: string };
+type ApiMessage = {
+  id: string;
+  from: { name: string; address: string };
+  to: string;
+  subject: string;
+  preview: string;
+  received_at: string;
+  html: string | null;
+  text: string | null;
+  headers: Array<[string, string]>;
+  attachments: Array<{ filename: string; size_bytes: number; content_type: string }>;
+};
+
+const apiBase = process.env.NEXT_PUBLIC_INBOXRHINO_API_URL ?? 'https://api.inboxrhino.in';
+
+function formatBytes(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mapApiMessage(message: ApiMessage): Message {
+  const received = new Date(message.received_at);
+  return {
+    id: message.id,
+    senderName: message.from.name || message.from.address,
+    senderEmail: message.from.address,
+    recipient: message.to,
+    subject: message.subject || '(no subject)',
+    preview: message.preview,
+    receivedAt: received.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+    dateLabel: received.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
+    unread: false,
+    html: message.html ?? '<html><body><p>This message has no HTML part.</p></body></html>',
+    text: message.text ?? '',
+    headers: message.headers,
+    attachments: message.attachments.map((attachment) => ({
+      name: attachment.filename,
+      size: formatBytes(attachment.size_bytes),
+      type: attachment.content_type.split('/').at(-1)?.toUpperCase() ?? 'FILE',
+    })),
+  };
+}
+
 export const emailPreviewCsp =
   "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; form-action 'none'; base-uri 'none';";
 
@@ -122,7 +167,20 @@ export function MessageViewer() {
   const [activeTab, setActiveTab] = useState<Tab>('html');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const activeMessage = useMemo(() => messages.find((message) => message.id === activeId) ?? messages[0], [activeId]);
+  const [displayMessages, setDisplayMessages] = useState<Message[]>(messages);
+  const [activeInbox, setActiveInbox] = useState<ApiInbox>({
+    id: 'demo',
+    address: messages[0].recipient,
+    local_part: messages[0].recipient.split('@')[0],
+  });
+  const [usage, setUsage] = useState({ received: 3, limit: 33 });
+  const [connection, setConnection] = useState<'demo' | 'loading' | 'live' | 'error'>('demo');
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectError, setConnectError] = useState('');
+  const activeMessage = useMemo(
+    () => displayMessages.find((message) => message.id === activeId) ?? displayMessages[0] ?? messages[0],
+    [activeId, displayMessages],
+  );
   const palette = {
     '--brand-ink': brandColors.ink,
     '--brand-cream': brandColors.cream,
@@ -134,6 +192,65 @@ export function MessageViewer() {
     setActiveId(messageId);
     setActiveTab('html');
     setDetailsOpen(false);
+  };
+
+  const loadLiveInbox = async (apiKey: string) => {
+    setConnection('loading');
+    setConnectError('');
+    const headers = { Authorization: `Bearer ${apiKey}` };
+    const [inboxResponse, usageResponse] = await Promise.all([
+      fetch(`${apiBase}/v1/inboxes?limit=1`, { headers }),
+      fetch(`${apiBase}/v1/usage`, { headers }),
+    ]);
+    if (!inboxResponse.ok || !usageResponse.ok) throw new Error('The API key could not be authenticated.');
+    const inboxPayload = (await inboxResponse.json()) as { data: ApiInbox[] };
+    const usagePayload = (await usageResponse.json()) as { emails: { received: number; limit: number } };
+    setUsage(usagePayload.emails);
+    const inbox = inboxPayload.data[0];
+    if (!inbox) {
+      setDisplayMessages([]);
+      setConnection('live');
+      sessionStorage.setItem('inboxrhino_api_key', apiKey);
+      return;
+    }
+    setActiveInbox(inbox);
+    const listResponse = await fetch(`${apiBase}/v1/inboxes/${inbox.id}/messages?limit=50`, { headers });
+    if (!listResponse.ok) throw new Error('Messages could not be loaded.');
+    const listPayload = (await listResponse.json()) as { data: Array<{ id: string }> };
+    const fullMessages = await Promise.all(
+      listPayload.data.map(async ({ id }) => {
+        const response = await fetch(`${apiBase}/v1/messages/${id}`, { headers });
+        if (!response.ok) throw new Error('A message could not be loaded.');
+        const payload = (await response.json()) as { data: ApiMessage };
+        return mapApiMessage(payload.data);
+      }),
+    );
+    setDisplayMessages(fullMessages);
+    if (fullMessages[0]) setActiveId(fullMessages[0].id);
+    setConnection('live');
+    sessionStorage.setItem('inboxrhino_api_key', apiKey);
+  };
+
+  useEffect(() => {
+    const apiKey = sessionStorage.getItem('inboxrhino_api_key');
+    if (!apiKey) return;
+    const timeout = window.setTimeout(() => {
+      loadLiveInbox(apiKey).catch(() => setConnection('error'));
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  const connectApi = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const apiKey = String(form.get('apiKey') ?? '').trim();
+    try {
+      await loadLiveInbox(apiKey);
+      setConnectOpen(false);
+    } catch (error) {
+      setConnection('error');
+      setConnectError(error instanceof Error ? error.message : 'Connection failed.');
+    }
   };
 
   const copyAddress = async () => {
@@ -149,11 +266,11 @@ export function MessageViewer() {
           <div className="flex items-center gap-6">
             <Logo />
             <nav aria-label="Breadcrumb" className="hidden items-center gap-2 text-sm text-stone-500 md:flex">
-              <span>Inboxes</span><span aria-hidden="true">/</span><span className="font-medium text-stone-900">cheerful-panda-x7k2</span>
+              <span>Inboxes</span><span aria-hidden="true">/</span><span className="font-medium text-stone-900">{activeInbox.local_part}</span>
             </nav>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-600 sm:flex"><span className="size-1.5 rounded-full bg-emerald-500" />3 of 33 emails</div>
+            <button type="button" onClick={() => setConnectOpen((open) => !open)} className="hidden items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-600 sm:flex"><span className={`size-1.5 rounded-full ${connection === 'live' ? 'bg-emerald-500' : connection === 'loading' ? 'bg-amber-500' : 'bg-stone-400'}`} />{connection === 'live' ? `${usage.received} of ${usage.limit} emails` : connection === 'loading' ? 'Connecting…' : 'Connect API'}</button>
             <button aria-label="Open help" className="grid size-9 place-items-center rounded-full border border-stone-200 text-sm font-semibold text-stone-500 transition hover:bg-stone-50">?</button>
             <button aria-label="Open account menu" className="grid size-9 place-items-center rounded-full bg-[var(--brand-ink)] text-xs font-bold text-[#F7F4EF]">VS</button>
           </div>
@@ -172,17 +289,17 @@ export function MessageViewer() {
           <section aria-label="Messages" className="hidden border-r border-[#1C1917]/10 bg-[var(--brand-cream)] md:block">
             <div className="border-b border-stone-200 px-5 pb-4 pt-5">
               <div className="mb-4 flex items-start justify-between gap-3">
-                <div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--brand-teal)]">Inbox</p><h1 className="mt-1 text-lg font-bold tracking-[-0.025em]">cheerful-panda-x7k2</h1></div>
+                <div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--brand-teal)]">Inbox</p><h1 className="mt-1 text-lg font-bold tracking-[-0.025em]">{activeInbox.local_part}</h1></div>
                 <button aria-label="Inbox actions" className="grid size-8 place-items-center rounded-lg text-xl leading-none text-stone-400 hover:bg-stone-100">···</button>
               </div>
               <button type="button" onClick={copyAddress} className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-left shadow-sm transition hover:border-stone-300">
-                <span className="min-w-0 truncate font-mono text-[11px] text-stone-600">cheerful-panda-x7k2@test.inboxrhino.in</span>
+                <span className="min-w-0 truncate font-mono text-[11px] text-stone-600">{activeInbox.address}</span>
                 <span aria-live="polite" className="shrink-0 text-[11px] font-bold text-[var(--brand-teal)]">{copied ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
-            <div className="flex items-center justify-between px-5 py-3 text-xs text-stone-500"><span>{messages.length} messages</span><button className="font-semibold text-stone-600 hover:text-stone-900">Newest first⌄</button></div>
+            <div className="flex items-center justify-between px-5 py-3 text-xs text-stone-500"><span>{displayMessages.length} messages</span><button className="font-semibold text-stone-600 hover:text-stone-900">Newest first⌄</button></div>
             <div role="list" className="space-y-1 px-2">
-              {messages.map((message) => {
+              {displayMessages.map((message) => {
                 const isActive = activeMessage.id === message.id;
                 return (
                   <div role="listitem" key={message.id}>
@@ -202,8 +319,9 @@ export function MessageViewer() {
           </section>
 
           <section aria-label="Message viewer" className="min-w-0 bg-white">
+            {connectOpen ? <form onSubmit={connectApi} className="flex flex-col gap-2 border-b border-stone-200 bg-stone-50 px-4 py-3 sm:flex-row sm:items-center sm:px-7"><label htmlFor="api-key" className="shrink-0 text-xs font-bold text-stone-700">API key</label><input id="api-key" name="apiKey" type="password" autoComplete="off" placeholder="ir_live_…" className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 font-mono text-xs outline-none focus:border-[var(--brand-teal)]" /><button type="submit" className="rounded-lg bg-[var(--brand-teal)] px-4 py-2 text-xs font-bold text-white">Connect</button>{connectError ? <p role="alert" className="text-xs text-red-700">{connectError}</p> : null}</form> : null}
             <div className="border-b border-stone-200 px-4 py-4 sm:px-7 sm:py-5">
-              <div className="mb-3 flex items-center justify-between gap-4 md:hidden"><button className="text-sm font-semibold text-[var(--brand-teal)]">← Messages</button><span className="text-xs text-stone-500">1 of {messages.length}</span></div>
+              <div className="mb-3 flex items-center justify-between gap-4 md:hidden"><button className="text-sm font-semibold text-[var(--brand-teal)]">← Messages</button><span className="text-xs text-stone-500">1 of {displayMessages.length}</span></div>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="mb-2 flex items-center gap-2"><span className="rounded-full bg-[#F4F1EA] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--brand-teal)]">Received</span><time className="text-xs text-stone-500">{activeMessage.dateLabel}</time></div>
