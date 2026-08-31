@@ -28,7 +28,7 @@ const reserved = new Set([
   'contact',
 ]);
 
-export function jsonError(c: Context<{ Bindings: Env; Variables: Variables }>, status: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500, code: string, message: string) {
+export function jsonError(c: Context<{ Bindings: Env; Variables: Variables }>, status: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503, code: string, message: string) {
   return c.json({ error: { code, message, request_id: c.get('requestId') } }, status);
 }
 

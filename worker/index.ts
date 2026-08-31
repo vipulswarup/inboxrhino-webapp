@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import PostalMime, { type Address } from 'postal-mime';
 import { apiAuth } from './auth';
+import { createEmailRoute, deleteEmailRoute, EmailRoutingError } from './email-routing';
 import type { AttachmentRow, Env, InboxRow, MessageRow, Variables } from './types';
 import {
   cleanPreview,
@@ -80,7 +81,7 @@ app.post('/setup', async (c) => {
       country,
       now,
     ),
-    c.env.DB.prepare('INSERT INTO domains (id, name, active, created_at) VALUES (?, ?, 1, ?)').bind('dom_test', 'test.inboxrhino.in', now),
+    c.env.DB.prepare('INSERT INTO domains (id, name, active, created_at) VALUES (?, ?, 1, ?)').bind('dom_test', c.env.INBOX_DOMAIN, now),
     c.env.DB.prepare('INSERT INTO api_keys (id, organisation_id, name, prefix, secret_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)').bind(
       keyId,
       organisationId,
@@ -161,7 +162,7 @@ app.post('/v1/inboxes', async (c) => {
   if ((count?.count ?? 0) >= FREE_INBOX_LIMIT) return jsonError(c, 409, 'inbox_quota_exceeded', 'Active inbox quota exceeded.');
 
   let localPart = body.prefix === undefined ? generatedPrefix() : normalizePrefix(body.prefix)!;
-  let address = `${localPart}@test.inboxrhino.in`;
+  let address = `${localPart}@${c.env.INBOX_DOMAIN}`;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const conflict = await c.env.DB.prepare('SELECT status, quarantine_until FROM inboxes WHERE address = ?').bind(address).first<{
       status: string;
@@ -170,7 +171,7 @@ app.post('/v1/inboxes', async (c) => {
     if (!conflict) break;
     if (body.prefix !== undefined) return jsonError(c, 409, 'address_unavailable', 'That inbox address is unavailable.');
     localPart = generatedPrefix();
-    address = `${localPart}@test.inboxrhino.in`;
+    address = `${localPart}@${c.env.INBOX_DOMAIN}`;
   }
 
   const now = Date.now();
@@ -180,14 +181,27 @@ app.post('/v1/inboxes', async (c) => {
     local_part: localPart,
     address,
     status: 'active',
+    routing_rule_id: null,
     created_at: now,
     deleted_at: null,
   };
   const response = { data: inboxJson(row) };
+  let routingRuleId: string;
+  try {
+    routingRuleId = await createEmailRoute(c.env, address);
+    row.routing_rule_id = routingRuleId;
+  } catch (error) {
+    console.error(JSON.stringify({ request_id: c.get('requestId'), event: 'email_route_create_failed', address, error: error instanceof Error ? error.message : 'unknown' }));
+    const status = error instanceof EmailRoutingError && error.status === 503 ? 503 : 502;
+    return jsonError(c, status, 'email_routing_unavailable', 'The inbox mail route could not be created. Please retry.');
+  }
   const statements = [
     c.env.DB.prepare(
-      "INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES (?, ?, 'dom_test', ?, ?, 'active', ?)",
-    ).bind(row.id, organisationId, localPart, address, now),
+      "INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, routing_rule_id, status, created_at) VALUES (?, ?, 'dom_test', ?, ?, ?, 'active', ?)",
+    ).bind(row.id, organisationId, localPart, address, routingRuleId, now),
+    c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
+      randomId('audit'), organisationId, c.get('auth').keyId, 'inbox.created', row.id, c.get('requestId'), now, now + RETENTION_MS,
+    ),
   ];
   if (idempotencyKey) {
     statements.push(
@@ -200,7 +214,14 @@ app.post('/v1/inboxes', async (c) => {
       ),
     );
   }
-  await c.env.DB.batch(statements);
+  try {
+    await c.env.DB.batch(statements);
+  } catch (error) {
+    await deleteEmailRoute(c.env, address, routingRuleId).catch((cleanupError) =>
+      console.error(JSON.stringify({ request_id: c.get('requestId'), event: 'email_route_rollback_failed', address, error: cleanupError instanceof Error ? cleanupError.message : 'unknown' })),
+    );
+    throw error;
+  }
   return c.json(response, 201);
 });
 
@@ -247,6 +268,13 @@ app.delete('/v1/inboxes/:id', async (c) => {
     .bind(c.req.param('id'), organisationId)
     .first<InboxRow>();
   if (!inbox) return jsonError(c, 404, 'inbox_not_found', 'Inbox not found.');
+  try {
+    await deleteEmailRoute(c.env, inbox.address, inbox.routing_rule_id);
+  } catch (error) {
+    console.error(JSON.stringify({ request_id: c.get('requestId'), event: 'email_route_delete_failed', address: inbox.address, error: error instanceof Error ? error.message : 'unknown' }));
+    const status = error instanceof EmailRoutingError && error.status === 503 ? 503 : 502;
+    return jsonError(c, status, 'email_routing_unavailable', 'The inbox mail route could not be removed. Please retry.');
+  }
   const objects = await c.env.DB.prepare(
     `SELECT text_object_key AS object_key FROM messages WHERE inbox_id = ? AND text_object_key IS NOT NULL
      UNION ALL SELECT html_object_key FROM messages WHERE inbox_id = ? AND html_object_key IS NOT NULL
@@ -260,6 +288,9 @@ app.delete('/v1/inboxes/:id', async (c) => {
     c.env.DB.prepare('DELETE FROM attachments WHERE message_id IN (SELECT id FROM messages WHERE inbox_id = ?)').bind(inbox.id),
     c.env.DB.prepare('DELETE FROM messages WHERE inbox_id = ?').bind(inbox.id),
     c.env.DB.prepare("UPDATE inboxes SET status = 'deleted', deleted_at = ?, quarantine_until = ? WHERE id = ?").bind(now, now + RETENTION_MS, inbox.id),
+    c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
+      randomId('audit'), organisationId, c.get('auth').keyId, 'inbox.deleted', inbox.id, c.get('requestId'), now, now + RETENTION_MS,
+    ),
   ]);
   return c.body(null, 204);
 });

@@ -1,0 +1,1 @@
+ALTER TABLE `inboxes` ADD `routing_rule_id` text;

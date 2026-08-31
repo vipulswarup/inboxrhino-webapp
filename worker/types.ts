@@ -2,6 +2,10 @@ export interface Env {
   DB: D1Database;
   MAIL: R2Bucket;
   SETUP_TOKEN: string;
+  CLOUDFLARE_EMAIL_ROUTING_TOKEN: string;
+  CLOUDFLARE_ZONE_ID: string;
+  EMAIL_WORKER_NAME: string;
+  INBOX_DOMAIN: string;
 }
 
 export type AuthContext = {
@@ -20,6 +24,7 @@ export type InboxRow = {
   local_part: string;
   address: string;
   status: 'active' | 'deleted';
+  routing_rule_id: string | null;
   created_at: number;
   deleted_at: number | null;
 };

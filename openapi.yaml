@@ -26,6 +26,7 @@ paths:
   /v1/inboxes:
     post:
       operationId: createInbox
+      description: Creates the inbox and its exact Cloudflare Email Routing rule atomically from the caller's perspective.
       parameters:
         - in: header
           name: Idempotency-Key
@@ -47,6 +48,8 @@ paths:
         '201': { $ref: '#/components/responses/InboxResponse' }
         '409': { $ref: '#/components/responses/ErrorResponse' }
         '422': { $ref: '#/components/responses/ErrorResponse' }
+        '502': { $ref: '#/components/responses/ErrorResponse' }
+        '503': { $ref: '#/components/responses/ErrorResponse' }
     get:
       operationId: listInboxes
       parameters:
@@ -73,9 +76,12 @@ paths:
         '404': { $ref: '#/components/responses/ErrorResponse' }
     delete:
       operationId: deleteInbox
+      description: Removes the Cloudflare Email Routing rule before deleting the inbox and retained messages.
       responses:
         '204': { description: Inbox and retained messages deleted }
         '404': { $ref: '#/components/responses/ErrorResponse' }
+        '502': { $ref: '#/components/responses/ErrorResponse' }
+        '503': { $ref: '#/components/responses/ErrorResponse' }
   /v1/inboxes/{inbox_id}/messages:
     parameters:
       - $ref: '#/components/parameters/InboxId'

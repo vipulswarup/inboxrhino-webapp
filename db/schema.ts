@@ -44,6 +44,7 @@ export const inboxes = sqliteTable(
       .references(() => domains.id),
     localPart: text('local_part').notNull(),
     address: text('address').notNull(),
+    routingRuleId: text('routing_rule_id'),
     status: text('status', { enum: ['active', 'deleted'] }).notNull().default('active'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
