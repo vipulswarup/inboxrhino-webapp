@@ -1,0 +1,512 @@
+{
+  "info": {
+    "_postman_id": "c611e5f8-142f-4faf-b39d-746fdba12b65",
+    "name": "InboxRhino API",
+    "description": "End-to-end InboxRhino mailbox testing. Set the collection variable apiKey before sending authenticated requests. The collection never contains or exports the real key.\n\nRecommended flow:\n1. Health Check\n2. Create Inbox\n3. Send an email to the returned inboxAddress\n4. Wait for Matching Email\n5. Get Message\n6. Delete Inbox when finished",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.inboxrhino.in",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "inboxPrefix",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "inboxId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "inboxAddress",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "messageId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expectedSubject",
+      "value": "InboxRhino Postman test",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Service and account",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Confirms that the production Worker is responding. No API key is required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('API is healthy', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('ok');",
+                  "  pm.expect(body.service).to.eql('inboxrhino-api');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/usage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "usage"
+              ]
+            },
+            "description": "Shows the current inbox and email quota."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Usage returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('inboxes');",
+                  "  pm.expect(body).to.have.property('emails');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Inbox lifecycle",
+      "item": [
+        {
+          "name": "Create Inbox",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString(36).slice(-8);",
+                  "pm.collectionVariables.set('inboxPrefix', `postman-${suffix}`);",
+                  "pm.collectionVariables.set('idempotencyKey', `postman-${Date.now()}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inbox created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data.address).to.include('@test.inboxrhino.in');",
+                  "  pm.collectionVariables.set('inboxId', body.data.id);",
+                  "  pm.collectionVariables.set('inboxAddress', body.data.address);",
+                  "  console.log('Send the test email to:', body.data.address);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prefix\": \"{{inboxPrefix}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/inboxes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "inboxes"
+              ]
+            },
+            "description": "Creates a real receive-only address and its exact Cloudflare Email Routing rule. The response tests save inboxId and inboxAddress for later requests."
+          }
+        },
+        {
+          "name": "List Inboxes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inboxes returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  if (body.data.length && !pm.collectionVariables.get('inboxId')) {",
+                  "    pm.collectionVariables.set('inboxId', body.data[0].id);",
+                  "    pm.collectionVariables.set('inboxAddress', body.data[0].address);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inboxes?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "inboxes"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Lists active inboxes. If inboxId is empty, the first inbox is selected automatically."
+          }
+        },
+        {
+          "name": "Get Current Inbox",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inboxes/{{inboxId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "inboxes",
+                "{{inboxId}}"
+              ]
+            },
+            "description": "Returns the inbox selected by Create Inbox or List Inboxes."
+          }
+        },
+        {
+          "name": "Delete Current Inbox",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inboxes/{{inboxId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "inboxes",
+                "{{inboxId}}"
+              ]
+            },
+            "description": "DESTRUCTIVE: removes the exact Cloudflare route and deletes all retained messages for the selected inbox. Run this last."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Inbox deleted', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "  pm.collectionVariables.unset('inboxId');",
+                  "  pm.collectionVariables.unset('inboxAddress');",
+                  "  pm.collectionVariables.unset('messageId');",
+                  "  pm.collectionVariables.unset('attachmentId');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Receive and inspect email",
+      "description": "After Create Inbox, send a real email to {{inboxAddress}}. Give it the subject stored in expectedSubject, then run Wait for Matching Email.",
+      "item": [
+        {
+          "name": "Wait for Matching Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inboxes/{{inboxId}}/messages?wait_seconds=30&limit=1&include=content&subject={{expectedSubject}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "inboxes",
+                "{{inboxId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "wait_seconds",
+                  "value": "30",
+                  "description": "Long-poll for up to 30 seconds. Maximum is 180."
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "include",
+                  "value": "content"
+                },
+                {
+                  "key": "subject",
+                  "value": "{{expectedSubject}}"
+                }
+              ]
+            },
+            "description": "Waits up to 30 seconds for an email whose subject contains expectedSubject. A 204 response means no matching email arrived during the wait."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Email received or wait timed out cleanly', function () {",
+                  "  pm.expect([200, 204]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Matching message returned', function () {",
+                  "    pm.expect(body.data).to.be.an('array').that.is.not.empty;",
+                  "  });",
+                  "  const message = body.data[0];",
+                  "  pm.collectionVariables.set('messageId', message.id);",
+                  "  if (message.attachments && message.attachments.length) {",
+                  "    pm.collectionVariables.set('attachmentId', message.attachments[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Messages Immediately",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/inboxes/{{inboxId}}/messages?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "inboxes",
+                "{{inboxId}}",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Returns retained message summaries without waiting."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Messages returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  if (body.data.length) pm.collectionVariables.set('messageId', body.data[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current Message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/messages/{{messageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "messages",
+                "{{messageId}}"
+              ]
+            },
+            "description": "Returns complete text, HTML, headers and attachment metadata for the selected message."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Complete message returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const message = pm.response.json().data;",
+                  "  pm.expect(message.id).to.eql(pm.collectionVariables.get('messageId'));",
+                  "  if (message.attachments && message.attachments.length) {",
+                  "    pm.collectionVariables.set('attachmentId', message.attachments[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download First Attachment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            },
+            "description": "Downloads the attachment selected from Wait for Matching Email or Get Current Message. Use Send and Download in Postman to save it."
+          }
+        },
+        {
+          "name": "Delete Current Message",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/messages/{{messageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "messages",
+                "{{messageId}}"
+              ]
+            },
+            "description": "DESTRUCTIVE: deletes the selected message and its stored content/attachments."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Message deleted', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "  pm.collectionVariables.unset('messageId');",
+                  "  pm.collectionVariables.unset('attachmentId');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
