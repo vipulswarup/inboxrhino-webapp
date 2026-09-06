@@ -5,6 +5,7 @@ import { CONTACT_EMAIL, consoleHref } from './lib/site';
 
 const nav = [
   { href: '/docs/quickstart', label: 'Docs' },
+  { href: '/blog', label: 'Blog' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ];
@@ -70,6 +71,9 @@ export function SiteFooter() {
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Resources</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
+              <Link href="/blog" className={linkClass}>
+                Blog
+              </Link>
               <Link href="/compare/tigrmail" className={linkClass}>
                 vs Tigrmail
               </Link>
