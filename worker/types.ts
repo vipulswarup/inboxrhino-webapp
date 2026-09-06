@@ -6,6 +6,8 @@ export interface Env {
   CLOUDFLARE_ZONE_ID: string;
   EMAIL_WORKER_NAME: string;
   INBOX_DOMAIN: string;
+  FIREBASE_PROJECT_ID: string;
+  TURNSTILE_SECRET_KEY: string;
 }
 
 export type AuthContext = {
@@ -13,8 +15,19 @@ export type AuthContext = {
   organisationId: string;
 };
 
+export type ConsoleAuthContext = {
+  userId: string;
+  organisationId: string;
+  role: 'owner' | 'member';
+  firebaseUid: string;
+  email: string;
+  emailVerified: boolean;
+  authTime: number;
+};
+
 export type Variables = {
   auth: AuthContext;
+  consoleAuth: ConsoleAuthContext;
   requestId: string;
 };
 
@@ -23,7 +36,7 @@ export type InboxRow = {
   organisation_id: string;
   local_part: string;
   address: string;
-  status: 'active' | 'deleted';
+  status: 'provisioning' | 'active' | 'deleted';
   routing_rule_id: string | null;
   created_at: number;
   deleted_at: number | null;

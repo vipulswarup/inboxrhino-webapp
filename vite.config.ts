@@ -13,6 +13,8 @@ const { d1, r2 } = hostingConfig;
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
 
 const localBindingConfig = {
+  name: 'inboxrhino-webapp',
+  routes: ['app.inboxrhino.in', 'inboxrhino.in', 'www.inboxrhino.in'].map((pattern) => ({ pattern, custom_domain: true })),
   main: 'vinext/server/app-router-entry',
   compatibility_flags: ['nodejs_compat'],
   d1_databases: d1

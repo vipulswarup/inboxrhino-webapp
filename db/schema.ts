@@ -1,5 +1,34 @@
 import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+export const users = sqliteTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    firebaseUid: text('firebase_uid').notNull(),
+    email: text('email').notNull(),
+    emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
+    displayName: text('display_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    lastLoginAt: integer('last_login_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [uniqueIndex('idx_users_firebase_uid').on(table.firebaseUid), uniqueIndex('idx_users_email').on(table.email)],
+);
+
+export const organisationMembers = sqliteTable(
+  'organisation_members',
+  {
+    organisationId: text('organisation_id')
+      .notNull()
+      .references(() => organisations.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['owner', 'member'] }).notNull(),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.organisationId, table.userId] }), index('idx_org_members_user').on(table.userId)],
+);
+
 export const organisations = sqliteTable('organisations', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -45,7 +74,7 @@ export const inboxes = sqliteTable(
     localPart: text('local_part').notNull(),
     address: text('address').notNull(),
     routingRuleId: text('routing_rule_id'),
-    status: text('status', { enum: ['active', 'deleted'] }).notNull().default('active'),
+    status: text('status', { enum: ['provisioning', 'active', 'deleted'] }).notNull().default('active'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
     quarantineUntil: integer('quarantine_until', { mode: 'timestamp_ms' }),
@@ -125,6 +154,7 @@ export const idempotencyKeys = sqliteTable(
       .references(() => organisations.id, { onDelete: 'cascade' }),
     key: text('key').notNull(),
     responseJson: text('response_json').notNull(),
+    requestHash: text('request_hash'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
   },

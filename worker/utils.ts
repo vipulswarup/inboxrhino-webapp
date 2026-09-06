@@ -6,6 +6,7 @@ const encoder = new TextEncoder();
 export const FREE_INBOX_LIMIT = 11;
 export const FREE_EMAIL_LIMIT = 33;
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+export const AUDIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 export const IDEMPOTENCY_MS = 24 * 60 * 60 * 1000;
 
 const adjectives = ['bright', 'calm', 'cheerful', 'clever', 'gentle', 'lucky', 'merry', 'quiet', 'swift', 'warm'];
@@ -61,10 +62,34 @@ export function currentPeriod(now = new Date()) {
 
 export function normalizePrefix(value: unknown) {
   if (typeof value !== 'string') return null;
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.toLowerCase();
   if (!/^[a-z0-9](?:[a-z0-9-]{1,38})[a-z0-9]$/.test(normalized)) return null;
   if (reserved.has(normalized)) return null;
   return normalized;
+}
+
+type ParsedInteger = { value: number } | { error: string };
+
+export function parseLimit(value: string | undefined, fallback = 50): ParsedInteger {
+  if (value === undefined) return { value: fallback };
+  if (!/^\d+$/.test(value)) return { error: 'limit must be an integer between 1 and 100.' };
+  const parsed = Number(value);
+  if (parsed < 1 || parsed > 100) return { error: 'limit must be an integer between 1 and 100.' };
+  return { value: parsed };
+}
+
+export function parseWaitSeconds(value: string | undefined): ParsedInteger {
+  if (value === undefined) return { value: 0 };
+  if (!/^\d+$/.test(value)) return { error: 'wait_seconds must be an integer between 0 and 180.' };
+  const parsed = Number(value);
+  if (parsed < 0 || parsed > 180) return { error: 'wait_seconds must be an integer between 0 and 180.' };
+  return { value: parsed };
+}
+
+export function parseRfc3339(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function generatedPrefix() {

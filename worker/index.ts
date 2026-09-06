@@ -2,18 +2,23 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import PostalMime, { type Address } from 'postal-mime';
 import { apiAuth } from './auth';
+import { consoleApp } from './console';
 import { createEmailRoute, deleteEmailRoute, EmailRoutingError } from './email-routing';
 import type { AttachmentRow, Env, InboxRow, MessageRow, Variables } from './types';
 import {
   cleanPreview,
   contentBytes,
   currentPeriod,
+  AUDIT_RETENTION_MS,
   FREE_EMAIL_LIMIT,
   FREE_INBOX_LIMIT,
   generatedPrefix,
   IDEMPOTENCY_MS,
   jsonError,
   normalizePrefix,
+  parseLimit,
+  parseRfc3339,
+  parseWaitSeconds,
   randomId,
   randomToken,
   RETENTION_MS,
@@ -23,7 +28,7 @@ import {
   toIso,
 } from './utils';
 
-const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use('*', async (c, next) => {
   c.set('requestId', c.req.header('CF-Ray') ?? crypto.randomUUID());
@@ -106,20 +111,25 @@ app.post('/setup', async (c) => {
   );
 });
 
+app.route('/console', consoleApp);
+
 app.use('/v1/*', apiAuth);
 
 function encodeCursor(createdAt: number, id: string) {
   return btoa(`${createdAt}:${id}`);
 }
 
-function decodeCursor(value: string | undefined) {
-  if (!value) return null;
+type ParsedCursor = { value: { createdAt: number; id: string } | null } | { error: string };
+
+function decodeCursor(value: string | undefined): ParsedCursor {
+  if (!value) return { value: null };
   try {
     const [createdAt, id] = atob(value).split(':');
     const timestamp = Number(createdAt);
-    return Number.isFinite(timestamp) && id ? { createdAt: timestamp, id } : null;
+    if (!Number.isFinite(timestamp) || !id) return { error: 'cursor is invalid or malformed.' };
+    return { value: { createdAt: timestamp, id } };
   } catch {
-    return null;
+    return { error: 'cursor is invalid or malformed.' };
   }
 }
 
@@ -139,78 +149,140 @@ app.post('/v1/inboxes', async (c) => {
   if (idempotencyKey && (idempotencyKey.length < 8 || idempotencyKey.length > 200)) {
     return jsonError(c, 422, 'invalid_idempotency_key', 'Idempotency-Key must be between 8 and 200 characters.');
   }
-  if (idempotencyKey) {
-    const cached = await c.env.DB.prepare('SELECT response_json FROM idempotency_keys WHERE organisation_id = ? AND key = ? AND expires_at > ?')
-      .bind(organisationId, idempotencyKey, Date.now())
-      .first<{ response_json: string }>();
-    if (cached) return c.json(JSON.parse(cached.response_json), 201);
-  }
 
-  let body: { prefix?: unknown } = {};
-  try {
-    body = await c.req.json<{ prefix?: unknown }>();
-  } catch {
-    if ((c.req.header('Content-Length') ?? '0') !== '0') return jsonError(c, 422, 'invalid_json', 'Request body must be valid JSON.');
+  let body: Record<string, unknown> = {};
+  const rawBody = await c.req.text();
+  if (rawBody.trim()) {
+    try {
+      const parsed = JSON.parse(rawBody) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return jsonError(c, 422, 'invalid_json', 'Request body must be a valid JSON object.');
+    }
   }
-  if (body.prefix !== undefined && normalizePrefix(body.prefix) === null) {
-    return jsonError(c, 422, 'invalid_prefix', 'Prefix must be 3–40 lowercase letters, digits or hyphens and cannot be reserved.');
+  const unknownProperties = Object.keys(body).filter((key) => key !== 'prefix');
+  if (unknownProperties.length > 0) {
+    return jsonError(c, 422, 'unknown_property', `Unknown request property: ${unknownProperties[0]}.`);
   }
-
-  const count = await c.env.DB.prepare("SELECT COUNT(*) AS count FROM inboxes WHERE organisation_id = ? AND status = 'active'")
-    .bind(organisationId)
-    .first<{ count: number }>();
-  if ((count?.count ?? 0) >= FREE_INBOX_LIMIT) return jsonError(c, 409, 'inbox_quota_exceeded', 'Active inbox quota exceeded.');
-
-  let localPart = body.prefix === undefined ? generatedPrefix() : normalizePrefix(body.prefix)!;
-  let address = `${localPart}@${c.env.INBOX_DOMAIN}`;
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const conflict = await c.env.DB.prepare('SELECT status, quarantine_until FROM inboxes WHERE address = ?').bind(address).first<{
-      status: string;
-      quarantine_until: number | null;
-    }>();
-    if (!conflict) break;
-    if (body.prefix !== undefined) return jsonError(c, 409, 'address_unavailable', 'That inbox address is unavailable.');
-    localPart = generatedPrefix();
-    address = `${localPart}@${c.env.INBOX_DOMAIN}`;
+  const normalizedPrefix = body.prefix === undefined ? null : normalizePrefix(body.prefix);
+  if (body.prefix !== undefined && normalizedPrefix === null) {
+    return jsonError(c, 422, 'invalid_prefix', 'Prefix must be 3–40 letters, digits or hyphens and cannot be reserved.');
   }
 
   const now = Date.now();
+  const requestHash = await sha256(JSON.stringify({ prefix: normalizedPrefix }));
+  if (idempotencyKey) {
+    await c.env.DB.prepare('DELETE FROM idempotency_keys WHERE organisation_id = ? AND key = ? AND expires_at <= ?')
+      .bind(organisationId, idempotencyKey, now)
+      .run();
+    const reservation = await c.env.DB.prepare(
+      "INSERT OR IGNORE INTO idempotency_keys (organisation_id, key, response_json, request_hash, created_at, expires_at) VALUES (?, ?, '__pending__', ?, ?, ?)",
+    )
+      .bind(organisationId, idempotencyKey, requestHash, now, now + IDEMPOTENCY_MS)
+      .run();
+    if ((reservation.meta.changes ?? 0) === 0) {
+      const cached = await c.env.DB.prepare(
+        'SELECT response_json, request_hash FROM idempotency_keys WHERE organisation_id = ? AND key = ? AND expires_at > ?',
+      )
+        .bind(organisationId, idempotencyKey, now)
+        .first<{ response_json: string; request_hash: string | null }>();
+      if (!cached) return jsonError(c, 503, 'idempotency_unavailable', 'The idempotent request could not be resolved. Please retry.');
+      if (cached.request_hash && cached.request_hash !== requestHash) {
+        return jsonError(c, 409, 'idempotency_key_reused', 'Idempotency-Key was already used with a different request body.');
+      }
+      if (cached.response_json === '__pending__') {
+        c.header('Retry-After', '1');
+        return jsonError(c, 409, 'idempotency_in_progress', 'A request with this Idempotency-Key is still in progress.');
+      }
+      return c.json(JSON.parse(cached.response_json), 201);
+    }
+  }
+
+  const releaseIdempotency = async () => {
+    if (idempotencyKey) {
+      await c.env.DB.prepare("DELETE FROM idempotency_keys WHERE organisation_id = ? AND key = ? AND response_json = '__pending__'")
+        .bind(organisationId, idempotencyKey)
+        .run();
+    }
+  };
+
+  let localPart = normalizedPrefix ?? generatedPrefix();
+  let address = `${localPart}@${c.env.INBOX_DOMAIN}`;
   const row: InboxRow = {
     id: randomId('inbox'),
     organisation_id: organisationId,
     local_part: localPart,
     address,
-    status: 'active',
+    status: 'provisioning',
     routing_rule_id: null,
     created_at: now,
     deleted_at: null,
   };
+
+  let reserved = false;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    row.local_part = localPart;
+    row.address = address;
+    try {
+      const result = await c.env.DB.prepare(
+        `INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, routing_rule_id, status, created_at)
+         SELECT ?, ?, 'dom_test', ?, ?, NULL, 'provisioning', ?
+         WHERE (SELECT COUNT(*) FROM inboxes WHERE organisation_id = ? AND status IN ('active', 'provisioning')) < ?`,
+      )
+        .bind(row.id, organisationId, localPart, address, now, organisationId, FREE_INBOX_LIMIT)
+        .run();
+      if ((result.meta.changes ?? 0) === 0) {
+        await releaseIdempotency();
+        return jsonError(c, 409, 'inbox_quota_exceeded', 'Active inbox quota exceeded.');
+      }
+      reserved = true;
+      break;
+    } catch (error) {
+      const isAddressConflict = error instanceof Error && /UNIQUE constraint failed: inboxes\.address/i.test(error.message);
+      if (!isAddressConflict) {
+        await releaseIdempotency();
+        throw error;
+      }
+      if (normalizedPrefix !== null) {
+        await releaseIdempotency();
+        return jsonError(c, 409, 'address_unavailable', 'That inbox address is unavailable.');
+      }
+      localPart = generatedPrefix();
+      address = `${localPart}@${c.env.INBOX_DOMAIN}`;
+    }
+  }
+  if (!reserved) {
+    await releaseIdempotency();
+    return jsonError(c, 503, 'address_generation_failed', 'A unique inbox address could not be generated. Please retry.');
+  }
+
+  row.status = 'active';
   const response = { data: inboxJson(row) };
   let routingRuleId: string;
   try {
     routingRuleId = await createEmailRoute(c.env, address);
     row.routing_rule_id = routingRuleId;
   } catch (error) {
+    await c.env.DB.prepare("DELETE FROM inboxes WHERE id = ? AND status = 'provisioning'").bind(row.id).run();
+    await releaseIdempotency();
     console.error(JSON.stringify({ request_id: c.get('requestId'), event: 'email_route_create_failed', address, error: error instanceof Error ? error.message : 'unknown' }));
     const status = error instanceof EmailRoutingError && error.status === 503 ? 503 : 502;
     return jsonError(c, status, 'email_routing_unavailable', 'The inbox mail route could not be created. Please retry.');
   }
   const statements = [
-    c.env.DB.prepare(
-      "INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, routing_rule_id, status, created_at) VALUES (?, ?, 'dom_test', ?, ?, ?, 'active', ?)",
-    ).bind(row.id, organisationId, localPart, address, routingRuleId, now),
+    c.env.DB.prepare("UPDATE inboxes SET routing_rule_id = ?, status = 'active' WHERE id = ? AND status = 'provisioning'").bind(routingRuleId, row.id),
     c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
-      randomId('audit'), organisationId, c.get('auth').keyId, 'inbox.created', row.id, c.get('requestId'), now, now + RETENTION_MS,
+      randomId('audit'), organisationId, c.get('auth').keyId, 'inbox.created', row.id, c.get('requestId'), now, now + AUDIT_RETENTION_MS,
     ),
   ];
   if (idempotencyKey) {
     statements.push(
-      c.env.DB.prepare('INSERT INTO idempotency_keys (organisation_id, key, response_json, created_at, expires_at) VALUES (?, ?, ?, ?, ?)').bind(
+      c.env.DB.prepare("UPDATE idempotency_keys SET response_json = ?, request_hash = ? WHERE organisation_id = ? AND key = ? AND response_json = '__pending__'").bind(
+        JSON.stringify(response),
+        requestHash,
         organisationId,
         idempotencyKey,
-        JSON.stringify(response),
-        now,
-        now + IDEMPOTENCY_MS,
       ),
     );
   }
@@ -220,6 +292,8 @@ app.post('/v1/inboxes', async (c) => {
     await deleteEmailRoute(c.env, address, routingRuleId).catch((cleanupError) =>
       console.error(JSON.stringify({ request_id: c.get('requestId'), event: 'email_route_rollback_failed', address, error: cleanupError instanceof Error ? cleanupError.message : 'unknown' })),
     );
+    await c.env.DB.prepare("DELETE FROM inboxes WHERE id = ? AND status = 'provisioning'").bind(row.id).run();
+    await releaseIdempotency();
     throw error;
   }
   return c.json(response, 201);
@@ -227,9 +301,12 @@ app.post('/v1/inboxes', async (c) => {
 
 app.get('/v1/inboxes', async (c) => {
   const { organisationId } = c.get('auth');
-  const requestedLimit = Number(c.req.query('limit') ?? 50);
-  const limit = Math.max(1, Math.min(Number.isFinite(requestedLimit) ? requestedLimit : 50, 100));
-  const cursor = decodeCursor(c.req.query('cursor'));
+  const parsedLimit = parseLimit(c.req.query('limit'));
+  if ('error' in parsedLimit) return jsonError(c, 422, 'invalid_limit', parsedLimit.error);
+  const limit = parsedLimit.value;
+  const parsedCursor = decodeCursor(c.req.query('cursor'));
+  if ('error' in parsedCursor) return jsonError(c, 422, 'invalid_cursor', parsedCursor.error);
+  const cursor = parsedCursor.value;
   let query = "SELECT * FROM inboxes WHERE organisation_id = ? AND status = 'active'";
   const values: unknown[] = [organisationId];
   if (cursor) {
@@ -289,7 +366,7 @@ app.delete('/v1/inboxes/:id', async (c) => {
     c.env.DB.prepare('DELETE FROM messages WHERE inbox_id = ?').bind(inbox.id),
     c.env.DB.prepare("UPDATE inboxes SET status = 'deleted', deleted_at = ?, quarantine_until = ? WHERE id = ?").bind(now, now + RETENTION_MS, inbox.id),
     c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
-      randomId('audit'), organisationId, c.get('auth').keyId, 'inbox.deleted', inbox.id, c.get('requestId'), now, now + RETENTION_MS,
+      randomId('audit'), organisationId, c.get('auth').keyId, 'inbox.deleted', inbox.id, c.get('requestId'), now, now + AUDIT_RETENTION_MS,
     ),
   ]);
   return c.body(null, 204);
@@ -334,8 +411,9 @@ async function messageContent(env: Env, row: MessageRow) {
 }
 
 async function findMessages(env: Env, organisationId: string, inboxId: string, queryValues: Record<string, string | undefined>) {
-  const requestedLimit = Number(queryValues.limit ?? 50);
-  const limit = Math.max(1, Math.min(Number.isFinite(requestedLimit) ? requestedLimit : 50, 100));
+  const parsedLimit = parseLimit(queryValues.limit);
+  if ('error' in parsedLimit) throw new Error('findMessages called without validated limit');
+  const limit = parsedLimit.value;
   const clauses = ['m.organisation_id = ?', 'm.inbox_id = ?'];
   const values: unknown[] = [organisationId, inboxId];
   if (queryValues.subject) {
@@ -351,16 +429,21 @@ async function findMessages(env: Env, organisationId: string, inboxId: string, q
     values.push(queryValues.sender_domain.toLowerCase());
   }
   if (queryValues.received_after) {
-    const timestamp = Date.parse(queryValues.received_after);
-    if (Number.isFinite(timestamp)) {
-      clauses.push('m.received_at >= ?');
-      values.push(timestamp);
-    }
+    clauses.push('m.received_at >= ?');
+    values.push(parseRfc3339(queryValues.received_after));
+  }
+  const parsedCursor = decodeCursor(queryValues.cursor);
+  if ('error' in parsedCursor) throw new Error('findMessages called without validated cursor');
+  if (parsedCursor.value) {
+    clauses.push('(m.received_at < ? OR (m.received_at = ? AND m.id < ?))');
+    values.push(parsedCursor.value.createdAt, parsedCursor.value.createdAt, parsedCursor.value.id);
   }
   const sql = `SELECT m.* FROM messages m WHERE ${clauses.join(' AND ')} ORDER BY m.received_at DESC, m.id DESC LIMIT ?`;
-  values.push(limit);
+  values.push(limit + 1);
   const result = await env.DB.prepare(sql).bind(...values).all<MessageRow>();
-  return { rows: result.results, limit };
+  const rows = result.results.slice(0, limit);
+  const next = result.results.length > limit ? rows.at(-1) : null;
+  return { rows, nextCursor: next ? encodeCursor(next.received_at, next.id) : null };
 }
 
 app.get('/v1/inboxes/:id/messages', async (c) => {
@@ -369,19 +452,34 @@ app.get('/v1/inboxes/:id/messages', async (c) => {
   const inbox = await c.env.DB.prepare("SELECT id FROM inboxes WHERE id = ? AND organisation_id = ? AND status = 'active'").bind(inboxId, organisationId).first();
   if (!inbox) return jsonError(c, 404, 'inbox_not_found', 'Inbox not found.');
 
-  const includeContent = c.req.query('include') === 'content';
-  const requestedLimit = Number(c.req.query('limit') ?? 50);
-  if (includeContent && requestedLimit !== 1) return jsonError(c, 422, 'invalid_include', 'include=content requires limit=1.');
-  if (c.req.query('received_after') && !Number.isFinite(Date.parse(c.req.query('received_after')!))) {
+  const include = c.req.query('include');
+  if (include !== undefined && include !== 'content') return jsonError(c, 422, 'invalid_include', 'include must be content when supplied.');
+  const includeContent = include === 'content';
+  const parsedLimit = parseLimit(c.req.query('limit'));
+  if ('error' in parsedLimit) return jsonError(c, 422, 'invalid_limit', parsedLimit.error);
+  if (includeContent && parsedLimit.value !== 1) return jsonError(c, 422, 'invalid_include', 'include=content requires limit=1.');
+  const receivedAfter = c.req.query('received_after');
+  if (receivedAfter && parseRfc3339(receivedAfter) === null) {
     return jsonError(c, 422, 'invalid_received_after', 'received_after must be an RFC 3339 timestamp.');
   }
-  const waitSeconds = Math.max(0, Math.min(Number(c.req.query('wait_seconds') ?? 0) || 0, 180));
+  const parsedWait = parseWaitSeconds(c.req.query('wait_seconds'));
+  if ('error' in parsedWait) return jsonError(c, 422, 'invalid_wait_seconds', parsedWait.error);
+  const waitSeconds = parsedWait.value;
+  const parsedCursor = decodeCursor(c.req.query('cursor'));
+  if ('error' in parsedCursor) return jsonError(c, 422, 'invalid_cursor', parsedCursor.error);
+  const sender = c.req.query('sender');
+  if (sender && !/^[^@\s]+@[^@\s]+$/.test(sender)) return jsonError(c, 422, 'invalid_sender', 'sender must be an email address.');
+  const senderDomain = c.req.query('sender_domain');
+  if (senderDomain && (senderDomain.includes('@') || /\s/.test(senderDomain))) {
+    return jsonError(c, 422, 'invalid_sender_domain', 'sender_domain must be a domain name.');
+  }
   const queryValues = {
-    limit: c.req.query('limit'),
+    limit: String(parsedLimit.value),
+    cursor: c.req.query('cursor'),
     subject: c.req.query('subject'),
-    sender: c.req.query('sender'),
-    sender_domain: c.req.query('sender_domain'),
-    received_after: c.req.query('received_after'),
+    sender,
+    sender_domain: senderDomain,
+    received_after: receivedAfter,
   };
 
   let pollId: string | null = null;
@@ -408,8 +506,9 @@ app.get('/v1/inboxes/:id/messages', async (c) => {
       const result = await findMessages(c.env, organisationId, inboxId, queryValues);
       if (result.rows.length > 0) {
         const data = includeContent ? await Promise.all(result.rows.map((row) => messageContent(c.env, row))) : result.rows.map(messageSummary);
-        return c.json({ data, next_cursor: null });
+        return c.json({ data, next_cursor: result.nextCursor });
       }
+      if (waitSeconds === 0) return c.json({ data: [], next_cursor: null });
       if (Date.now() >= deadline) break;
       await sleep(Math.min(1500, Math.max(0, deadline - Date.now())));
     } while (Date.now() <= deadline);
@@ -436,9 +535,13 @@ app.delete('/v1/messages/:id', async (c) => {
     if (!exists) return jsonError(c, 404, 'message_not_found', 'Message not found.');
   }
   await Promise.all(keys.map((key) => c.env.MAIL.delete(key)));
+  const now = Date.now();
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM attachments WHERE message_id = ? AND organisation_id = ?').bind(id, organisationId),
     c.env.DB.prepare('DELETE FROM messages WHERE id = ? AND organisation_id = ?').bind(id, organisationId),
+    c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
+      randomId('audit'), organisationId, c.get('auth').keyId, 'message.deleted', id, c.get('requestId'), now, now + AUDIT_RETENTION_MS,
+    ),
   ]);
   return c.body(null, 204);
 });
@@ -450,12 +553,15 @@ app.get('/v1/attachments/:id', async (c) => {
   if (!attachment) return jsonError(c, 404, 'attachment_not_found', 'Attachment not found.');
   const object = await c.env.MAIL.get(attachment.object_key);
   if (!object) return jsonError(c, 404, 'attachment_not_found', 'Attachment content is no longer available.');
-  const safeName = attachment.filename.replace(/["\r\n]/g, '_');
+  const safeName = attachment.filename.replace(/["\\\r\n]/g, '_');
+  const encodedName = encodeURIComponent(attachment.filename).replace(/[!'()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
   return new Response(object.body, {
     headers: {
       'Content-Type': attachment.content_type || 'application/octet-stream',
       'Content-Length': String(attachment.size_bytes),
-      'Content-Disposition': `attachment; filename="${safeName}"`,
+      'Content-Disposition': `attachment; filename="${safeName}"; filename*=UTF-8''${encodedName}`,
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, no-store',
     },
@@ -486,7 +592,7 @@ function mailbox(address: Address | undefined) {
   return { name: address.name ?? '', address: address.address.toLowerCase() };
 }
 
-async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
+export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
   const recipient = message.to.trim().toLowerCase();
   const inbox = await env.DB.prepare("SELECT id, organisation_id FROM inboxes WHERE address = ? AND status = 'active'")
     .bind(recipient)
@@ -497,118 +603,133 @@ async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
   }
 
   const period = currentPeriod();
-  const usage = await env.DB.prepare('SELECT received_count FROM usage_counters WHERE organisation_id = ? AND period_start = ?')
-    .bind(inbox.organisation_id, period.key)
-    .first<{ received_count: number }>();
-  if ((usage?.received_count ?? 0) >= FREE_EMAIL_LIMIT) {
+  const reservation = await env.DB.prepare(
+    `INSERT INTO usage_counters (organisation_id, period_start, received_count) VALUES (?, ?, 1)
+     ON CONFLICT(organisation_id, period_start) DO UPDATE SET received_count = received_count + 1
+     WHERE received_count < ?`,
+  )
+    .bind(inbox.organisation_id, period.key, FREE_EMAIL_LIMIT)
+    .run();
+  if ((reservation.meta.changes ?? 0) === 0) {
     message.setReject('Monthly recipient quota exceeded');
     return;
   }
 
-  const parsed = await PostalMime.parse(message.raw, { attachmentEncoding: 'arraybuffer', maxNestingDepth: 20, maxHeadersSize: 128 * 1024 });
-  const now = Date.now();
-  const messageId = randomId('msg');
-  const sender = mailbox(parsed.from);
-  const text = parsed.text ?? '';
-  const html = parsed.html ?? '';
-  const textObjectKey = text ? `messages/${inbox.organisation_id}/${messageId}/text.txt` : null;
-  const htmlObjectKey = html ? `messages/${inbox.organisation_id}/${messageId}/html.html` : null;
-  const attachmentRows: Array<AttachmentRow & { bytes: Uint8Array }> = parsed.attachments.map((attachment, index) => {
-    const bytes = contentBytes(attachment.content);
-    const id = randomId('att');
-    return {
-      id,
-      message_id: messageId,
-      filename: attachment.filename || `attachment-${index + 1}`,
-      content_type: attachment.mimeType || 'application/octet-stream',
-      size_bytes: bytes.byteLength,
-      object_key: `messages/${inbox.organisation_id}/${messageId}/attachments/${id}`,
-      disposition: attachment.disposition ?? 'attachment',
-      content_id: attachment.contentId ?? null,
-      bytes,
-    };
-  });
-
-  const writes: Promise<unknown>[] = [];
-  if (textObjectKey) writes.push(env.MAIL.put(textObjectKey, text, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }));
-  if (htmlObjectKey) writes.push(env.MAIL.put(htmlObjectKey, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } }));
-  for (const attachment of attachmentRows) {
-    writes.push(env.MAIL.put(attachment.object_key, attachment.bytes, { httpMetadata: { contentType: attachment.content_type } }));
-  }
-  await Promise.all(writes);
-
-  const statements = [
-    env.DB.prepare(
-      `INSERT INTO messages
-       (id, organisation_id, inbox_id, internet_message_id, sender_email, sender_name, recipient, subject, preview, headers_json,
-        text_object_key, html_object_key, size_bytes, received_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(
-      messageId,
-      inbox.organisation_id,
-      inbox.id,
-      parsed.messageId ?? null,
-      sender.address || message.from.toLowerCase(),
-      sender.name,
-      recipient,
-      parsed.subject ?? '',
-      cleanPreview(text || parsed.subject || ''),
-      JSON.stringify(parsed.headers.map((header) => [header.originalKey, header.value])),
-      textObjectKey,
-      htmlObjectKey,
-      message.rawSize,
-      now,
-      now + RETENTION_MS,
-    ),
-    env.DB.prepare(
-      `INSERT INTO usage_counters (organisation_id, period_start, received_count) VALUES (?, ?, 1)
-       ON CONFLICT(organisation_id, period_start) DO UPDATE SET received_count = received_count + 1`,
-    ).bind(inbox.organisation_id, period.key),
-  ];
-  for (const attachment of attachmentRows) {
-    statements.push(
-      env.DB.prepare(
-        'INSERT INTO attachments (id, organisation_id, message_id, filename, content_type, size_bytes, object_key, disposition, content_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      ).bind(
-        attachment.id,
-        inbox.organisation_id,
-        messageId,
-        attachment.filename,
-        attachment.content_type,
-        attachment.size_bytes,
-        attachment.object_key,
-        attachment.disposition,
-        attachment.content_id,
-      ),
-    );
-  }
-
   try {
-    await env.DB.batch(statements);
+    const parsed = await PostalMime.parse(message.raw, { attachmentEncoding: 'arraybuffer', maxNestingDepth: 20, maxHeadersSize: 128 * 1024 });
+    const now = Date.now();
+    const messageId = randomId('msg');
+    const sender = mailbox(parsed.from);
+    const text = parsed.text ?? '';
+    const html = parsed.html ?? '';
+    const textObjectKey = text ? `messages/${inbox.organisation_id}/${messageId}/text.txt` : null;
+    const htmlObjectKey = html ? `messages/${inbox.organisation_id}/${messageId}/html.html` : null;
+    const attachmentRows: Array<AttachmentRow & { bytes: Uint8Array }> = parsed.attachments.map((attachment, index) => {
+      const bytes = contentBytes(attachment.content);
+      const id = randomId('att');
+      return {
+        id,
+        message_id: messageId,
+        filename: attachment.filename || `attachment-${index + 1}`,
+        content_type: attachment.mimeType || 'application/octet-stream',
+        size_bytes: bytes.byteLength,
+        object_key: `messages/${inbox.organisation_id}/${messageId}/attachments/${id}`,
+        disposition: attachment.disposition === 'inline' ? 'inline' : 'attachment',
+        content_id: attachment.contentId ?? null,
+        bytes,
+      };
+    });
+
+    const writes: Promise<unknown>[] = [];
+    if (textObjectKey) writes.push(env.MAIL.put(textObjectKey, text, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }));
+    if (htmlObjectKey) writes.push(env.MAIL.put(htmlObjectKey, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } }));
+    for (const attachment of attachmentRows) {
+      writes.push(env.MAIL.put(attachment.object_key, attachment.bytes, { httpMetadata: { contentType: attachment.content_type } }));
+    }
+
+    const statements = [
+      env.DB.prepare(
+        `INSERT INTO messages
+         (id, organisation_id, inbox_id, internet_message_id, sender_email, sender_name, recipient, subject, preview, headers_json,
+          text_object_key, html_object_key, size_bytes, received_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        messageId,
+        inbox.organisation_id,
+        inbox.id,
+        parsed.messageId ?? null,
+        sender.address || message.from.toLowerCase(),
+        sender.name,
+        recipient,
+        parsed.subject ?? '',
+        cleanPreview(text || parsed.subject || ''),
+        JSON.stringify(parsed.headers.map((header) => [header.originalKey, header.value])),
+        textObjectKey,
+        htmlObjectKey,
+        message.rawSize,
+        now,
+        now + RETENTION_MS,
+      ),
+    ];
+    for (const attachment of attachmentRows) {
+      statements.push(
+        env.DB.prepare(
+          'INSERT INTO attachments (id, organisation_id, message_id, filename, content_type, size_bytes, object_key, disposition, content_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        ).bind(
+          attachment.id,
+          inbox.organisation_id,
+          messageId,
+          attachment.filename,
+          attachment.content_type,
+          attachment.size_bytes,
+          attachment.object_key,
+          attachment.disposition,
+          attachment.content_id,
+        ),
+      );
+    }
+
+    try {
+      await Promise.all(writes);
+      await env.DB.batch(statements);
+    } catch (error) {
+      await Promise.all([textObjectKey, htmlObjectKey, ...attachmentRows.map((row) => row.object_key)].filter((key): key is string => Boolean(key)).map((key) => env.MAIL.delete(key)));
+      throw error;
+    }
   } catch (error) {
-    await Promise.all([textObjectKey, htmlObjectKey, ...attachmentRows.map((row) => row.object_key)].filter((key): key is string => Boolean(key)).map((key) => env.MAIL.delete(key)));
+    await env.DB.prepare('UPDATE usage_counters SET received_count = MAX(0, received_count - 1) WHERE organisation_id = ? AND period_start = ?')
+      .bind(inbox.organisation_id, period.key)
+      .run();
     throw error;
   }
 }
 
-async function cleanup(env: Env) {
+export async function cleanup(env: Env) {
   const now = Date.now();
-  const expired = await env.DB.prepare('SELECT id, organisation_id FROM messages WHERE expires_at <= ? LIMIT 500').bind(now).all<{
-    id: string;
-    organisation_id: string;
-  }>();
-  for (const message of expired.results) {
-    const keys = await objectKeysForMessage(env.DB, message.organisation_id, message.id);
-    await Promise.all(keys.map((key) => env.MAIL.delete(key)));
-  }
-  if (expired.results.length) {
-    const placeholders = expired.results.map(() => '?').join(',');
-    const ids = expired.results.map((row) => row.id);
-    await env.DB.batch([
-      env.DB.prepare(`DELETE FROM attachments WHERE message_id IN (${placeholders})`).bind(...ids),
-      env.DB.prepare(`DELETE FROM messages WHERE id IN (${placeholders})`).bind(...ids),
-    ]);
-  }
+  let expiredCount: number;
+  do {
+    const expired = await env.DB.prepare('SELECT id FROM messages WHERE expires_at <= ? ORDER BY expires_at, id LIMIT 500').bind(now).all<{ id: string }>();
+    expiredCount = expired.results.length;
+    if (expiredCount > 0) {
+      const objects = await env.DB.prepare(
+        `WITH expired AS (SELECT id FROM messages WHERE expires_at <= ? ORDER BY expires_at, id LIMIT 500)
+         SELECT text_object_key AS object_key FROM messages WHERE id IN (SELECT id FROM expired) AND text_object_key IS NOT NULL
+         UNION ALL SELECT html_object_key FROM messages WHERE id IN (SELECT id FROM expired) AND html_object_key IS NOT NULL
+         UNION ALL SELECT object_key FROM attachments WHERE message_id IN (SELECT id FROM expired)`,
+      )
+        .bind(now)
+        .all<{ object_key: string }>();
+      for (let offset = 0; offset < objects.results.length; offset += 1000) {
+        await env.MAIL.delete(objects.results.slice(offset, offset + 1000).map((row) => row.object_key));
+      }
+      await env.DB.batch([
+        env.DB.prepare(
+          'DELETE FROM attachments WHERE message_id IN (SELECT id FROM messages WHERE expires_at <= ? ORDER BY expires_at, id LIMIT 500)',
+        ).bind(now),
+        env.DB.prepare('DELETE FROM messages WHERE id IN (SELECT id FROM messages WHERE expires_at <= ? ORDER BY expires_at, id LIMIT 500)').bind(now),
+      ]);
+    }
+  } while (expiredCount === 500);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM inboxes WHERE status = 'deleted' AND quarantine_until <= ?").bind(now),
     env.DB.prepare('DELETE FROM idempotency_keys WHERE expires_at <= ?').bind(now),

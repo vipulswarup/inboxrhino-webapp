@@ -14,7 +14,7 @@ describe('MessageViewer', () => {
     expect(app).toHaveStyle(`--brand-ink: ${brandColors.ink}`);
     expect(app).toHaveStyle(`--brand-cream: ${brandColors.cream}`);
     expect(app).toHaveStyle(`--brand-cream-deep: ${brandColors.creamDeep}`);
-    expect(container.querySelector('img[src="/favicon.svg"]')).toBeInTheDocument();
+    expect(container.querySelector('img[src="/brand/logo-icon.svg"]')).toBeInTheDocument();
   });
 
   it('opens the newest message in a locked-down iframe', () => {
@@ -77,5 +77,42 @@ describe('createSafeEmailDocument', () => {
     expect(createSafeEmailDocument('<html><body>Test</body></html>')).toContain(
       `<head><meta http-equiv="Content-Security-Policy" content="${emailPreviewCsp}">`,
     );
+  });
+});
+
+describe('live console', () => {
+  it('never substitutes a demo email into an empty live mailbox', () => {
+    render(<MessageViewer mode="live" verified displayMessages={[]} activeInbox={{ id: 'empty', address: 'empty@example.com', local_part: 'empty' }} />);
+    expect(screen.getByRole('heading', { name: 'Waiting for email' })).toBeInTheDocument();
+    expect(screen.queryByTitle(/Rendered email/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Verify your email address')).not.toBeInTheDocument();
+  });
+
+  it('has visible navigation labels and a refresh action', async () => {
+    const { vi } = await import('vitest');
+    const onPanelChange = vi.fn();
+    const onRefresh = vi.fn();
+    render(<MessageViewer mode="live" verified onPanelChange={onPanelChange} onRefresh={onRefresh} />);
+    const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
+    for (const label of ['Mailboxes', 'API Keys', 'Usage']) expect(within(nav).getByText(label)).toBeVisible();
+    await userEvent.click(within(nav).getByRole('button', { name: 'API Keys' }));
+    expect(onPanelChange).toHaveBeenCalledWith('api-keys');
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('renders plain text emails and downloads every attachment individually', async () => {
+    const { vi } = await import('vitest');
+    const { messages } = await import('./message-viewer');
+    const download = vi.fn();
+    const real = { ...messages[0], html: '', text: 'A real plain text email', contentLoaded: true, attachments: [
+      { id: 'one', name: 'first.pdf', size: '1 KB', type: 'PDF' },
+      { id: 'two', name: 'second.txt', size: '2 KB', type: 'TXT' },
+    ] };
+    render(<MessageViewer mode="live" verified displayMessages={[real]} onDownloadAttachment={download} />);
+    expect(screen.getByText('A real plain text email')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Download second.txt' }));
+    expect(download).toHaveBeenCalledWith('two', 'second.txt');
+    expect(screen.getByRole('button', { name: 'Download first.pdf' })).toBeInTheDocument();
   });
 });

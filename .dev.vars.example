@@ -1,0 +1,4 @@
+SETUP_TOKEN=replace-with-a-long-random-bootstrap-token
+CLOUDFLARE_EMAIL_ROUTING_TOKEN=replace-with-a-zone-scoped-email-routing-token
+FIREBASE_PROJECT_ID=inboxrhino-prod
+TURNSTILE_SECRET_KEY=replace-with-your-turnstile-secret-key
