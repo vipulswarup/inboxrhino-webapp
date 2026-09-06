@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { CONTACT_EMAIL, SITE_ORIGIN } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = pageMeta(
 export default function LegalPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-12 px-4 py-16 sm:px-6">
+      <PageBreadcrumbs items={[{ name: 'Privacy and terms', path: '/legal' }]} />
       <header>
         <h1 className="text-4xl font-bold tracking-[-0.04em]">Privacy and terms</h1>
         <p className="mt-4 text-sm leading-6 text-stone-600">
@@ -50,7 +52,15 @@ export default function LegalPage() {
           The free tier allows 11 active inboxes, 33 inbound emails per UTC calendar month, and one organisation user. When the monthly email quota is exhausted, further inbound mail is rejected. We may suspend accounts that exhaust resources or violate these terms.
         </p>
         <p>
-          The service is provided as-is during the free launch. Paid plans, SLA, and GST invoices are not part of this launch. We may change limits with notice on this site.
+          The service is provided as-is during the free launch. Paid plans, SLA, and GST invoices are not part of this launch. We may change limits with notice on this site. Company details are on the{' '}
+          <Link href="/about" className="font-bold text-[#0F3D3E]">
+            about page
+          </Link>
+          . Quota numbers match{' '}
+          <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+            InboxRhino pricing
+          </Link>
+          .
         </p>
       </section>
     </main>

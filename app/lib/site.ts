@@ -3,6 +3,38 @@ export const APP_ORIGIN = 'https://app.inboxrhino.in';
 export const API_ORIGIN = 'https://api.inboxrhino.in';
 export const FILES_ORIGIN = 'https://files.inboxrhino.in';
 export const CONTACT_EMAIL = 'contact@inboxrhino.in';
+export const LEGAL_NAME = 'Argali Knowledge Services Pvt Ltd';
+export const OG_IMAGE_PATH = '/brand/og-default.png';
+export const OG_IMAGE_ALT = 'InboxRhino receive-only test email inboxes';
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
+export const SAME_AS = ['https://argali.in', 'https://www.eisenvault.com'] as const;
+export const OFFICE_ADDRESS = {
+  streetAddress: '4th Floor, Statesman House, Barakhamba Road',
+  addressLocality: 'New Delhi',
+  postalCode: '110001',
+  addressCountry: 'IN',
+} as const;
+export const OFFICE_PHONE = '+91 74282 42192';
+
+export const homeFaqs = [
+  {
+    q: 'Can test inboxes send mail?',
+    a: 'No. Inboxes are receive-only. InboxRhino cannot send, reply, or forward as a generated address.',
+  },
+  {
+    q: 'How long are messages kept?',
+    a: '30 days. After that, message content, headers, and attachments are deleted. The inbox itself stays until you delete it.',
+  },
+  {
+    q: 'What is the free tier?',
+    a: '11 active inboxes, 33 inbound emails per UTC calendar month, and one organisation user. Enough to wire one flow on your laptop.',
+  },
+  {
+    q: 'When can I pay in INR?',
+    a: 'Paid Starter, Growth, and Scale plans are designed with INR prices and GST. Checkout is coming soon. The free tier is live now.',
+  },
+] as const;
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-JWMSV0FTTY';
 export const AHREFS_ANALYTICS_KEY = process.env.NEXT_PUBLIC_AHREFS_ANALYTICS_KEY || '2k1nGNd6PVGmi9GCM8VKtg';
 

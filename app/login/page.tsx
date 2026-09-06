@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth-provider';
 import { LogoIcon } from '../brand-logo';
+import { SITE_ORIGIN } from '../lib/site';
 import { TurnstileWidget } from '../turnstile-widget';
 
 type Mode = 'sign-in' | 'sign-up' | 'reset';
@@ -151,9 +151,13 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-xs text-stone-500">
           By continuing you agree to use InboxRhino for testing only.{' '}
-          <Link href="/" className="font-semibold text-[#0F3D3E]">
-            Learn more
-          </Link>
+          <a href={SITE_ORIGIN} className="font-semibold text-[#0F3D3E]">
+            InboxRhino home
+          </a>
+          {' · '}
+          <a href={`${SITE_ORIGIN}/legal`} className="font-semibold text-[#0F3D3E]">
+            Privacy and terms
+          </a>
         </p>
       </div>
     </main>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { CONTACT_EMAIL } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = pageMeta(
 export default function AboutPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-12 px-4 py-16 sm:px-6">
+      <PageBreadcrumbs items={[{ name: 'About', path: '/about' }]} />
       <header>
         <h1 className="text-4xl font-bold tracking-[-0.04em]">About InboxRhino</h1>
         <p className="mt-4 text-sm leading-6 text-stone-600">
@@ -86,9 +88,17 @@ export default function AboutPage() {
       <p className="text-sm leading-6 text-stone-600">
         For privacy and terms, see the{' '}
         <Link href="/legal" className="font-bold text-[#0F3D3E]">
-          legal
-        </Link>{' '}
-        page.
+          privacy policy and terms of service
+        </Link>
+        . Product limits are on{' '}
+        <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+          InboxRhino pricing
+        </Link>
+        . Start with the{' '}
+        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+          API quickstart
+        </Link>
+        .
       </p>
     </main>
   );

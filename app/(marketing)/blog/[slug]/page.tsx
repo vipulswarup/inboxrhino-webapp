@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { JsonLd } from '@/app/json-ld';
+import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { formatPostDate, getAllPosts, getPostBySlug } from '@/app/lib/blog';
-import { pageMeta } from '@/app/lib/seo';
+import { blogPostingJsonLd, pageMeta } from '@/app/lib/seo';
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -16,15 +18,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) return {};
-  const meta = pageMeta(`/blog/${post.slug}`, post.title, post.description);
-  return {
-    ...meta,
-    openGraph: {
-      ...meta.openGraph,
-      type: 'article',
-      publishedTime: post.date || undefined,
-    },
-  };
+  return pageMeta(`/blog/${post.slug}`, post.title, post.description, {
+    ogType: 'article',
+    publishedTime: post.date ? `${post.date}T00:00:00Z` : undefined,
+  });
 }
 
 const proseClassName = [
@@ -48,16 +45,40 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+      <JsonLd
+        data={blogPostingJsonLd({
+          path: `/blog/${post.slug}`,
+          title: post.title,
+          description: post.description,
+          datePublished: post.date ? `${post.date}T00:00:00Z` : '',
+        })}
+      />
+      <PageBreadcrumbs
+        items={[
+          { name: 'Blog', path: '/blog' },
+          { name: post.title, path: `/blog/${post.slug}` },
+        ]}
+      />
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">
-        <Link href="/blog" className="hover:underline">
-          Blog
-        </Link>
-        {' · '}
-        {formatPostDate(post.date)}
+        InboxRhino · {formatPostDate(post.date)}
       </p>
       <h1 className="mt-4 text-4xl font-bold tracking-[-0.04em]">{post.title}</h1>
       <p className="mt-4 text-sm leading-6 text-stone-600">{post.description}</p>
       <article className={`mt-10 ${proseClassName}`} dangerouslySetInnerHTML={{ __html: post.html }} />
+      <p className="mt-12 text-sm leading-6 text-stone-600">
+        Next:{' '}
+        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+          Read the InboxRhino API quickstart
+        </Link>
+        {' · '}
+        <Link href="/docs/playwright" className="font-bold text-[#0F3D3E]">
+          Test signup email in Playwright
+        </Link>
+        {' · '}
+        <Link href="/compare/tigrmail" className="font-bold text-[#0F3D3E]">
+          Compare InboxRhino and Tigrmail
+        </Link>
+      </p>
     </main>
   );
 }

@@ -7,11 +7,21 @@ import { SiteFrame } from './site-frame';
 import { isConsoleHost } from './lib/site';
 import { pageMeta } from './lib/seo';
 
-export const metadata: Metadata = pageMeta(
+const marketingMeta = pageMeta(
   '/',
   'InboxRhino — real inboxes for signup, OTP and password-reset tests',
   'Create a real MX inbox, catch signup verification, OTP and password-reset email in automated tests, and open the HTML in the browser. Free tier is live. INR billing is coming.',
 );
+
+export async function generateMetadata(): Promise<Metadata> {
+  if (isConsoleHost((await headers()).get('host'))) {
+    return {
+      title: { absolute: 'InboxRhino console' },
+      robots: { index: false, follow: false },
+    };
+  }
+  return marketingMeta;
+}
 
 export default async function HomePage() {
   if (isConsoleHost((await headers()).get('host'))) {

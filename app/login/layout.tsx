@@ -6,8 +6,8 @@ export const metadata = {
     '/login',
     'Sign in to InboxRhino — test inbox console',
     'Sign in to the InboxRhino console to create API keys, inspect received test email, and manage inboxes for signup, OTP and password-reset automation.',
+    { robots: { index: false, follow: false } },
   ),
-  robots: { index: false, follow: true },
 };
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {

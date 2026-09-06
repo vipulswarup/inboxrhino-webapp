@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { CodeSnippet } from './code-snippet';
-import { consoleHref, waitSnippet } from './lib/site';
+import { JsonLd } from './json-ld';
+import { getAllPosts } from './lib/blog';
+import { faqPageJsonLd, softwareApplicationJsonLd } from './lib/seo';
+import { consoleHref, homeFaqs, waitSnippet } from './lib/site';
 import { MessageViewer } from './message-viewer';
 import { PricingGrid } from './pricing-grid';
 
@@ -20,29 +23,13 @@ const reasons = [
   },
 ];
 
-const faqs = [
-  {
-    q: 'Can test inboxes send mail?',
-    a: 'No. Inboxes are receive-only. InboxRhino cannot send, reply, or forward as a generated address.',
-  },
-  {
-    q: 'How long are messages kept?',
-    a: '30 days. After that, message content, headers, and attachments are deleted. The inbox itself stays until you delete it.',
-  },
-  {
-    q: 'What is the free tier?',
-    a: '11 active inboxes, 33 inbound emails per UTC calendar month, and one organisation user. Enough to wire one flow on your laptop.',
-  },
-  {
-    q: 'When can I pay in INR?',
-    a: 'Paid Starter, Growth, and Scale plans are designed with INR prices and GST. Checkout is coming soon. The free tier is live now.',
-  },
-];
-
 export async function MarketingHome() {
   const loginHref = consoleHref((await headers()).get('host'), '/login');
+  const latestPost = getAllPosts()[0];
   return (
     <main>
+      <JsonLd data={softwareApplicationJsonLd()} />
+      <JsonLd data={faqPageJsonLd(homeFaqs)} />
       <section className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:py-20">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#0F3D3E]">Receive-only test email API</p>
@@ -54,10 +41,10 @@ export async function MarketingHome() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href={loginHref} className="rounded-lg bg-[#0F3D3E] px-4 py-2.5 text-sm font-bold text-white">
-              Create free inbox
+              Create a free test inbox
             </a>
             <Link href="/docs/quickstart" className="rounded-lg border border-[#1C1917]/15 px-4 py-2.5 text-sm font-bold text-[#1C1917]">
-              5-minute quickstart
+              Read the InboxRhino API quickstart
             </Link>
           </div>
         </div>
@@ -93,7 +80,7 @@ export async function MarketingHome() {
               <p className="mt-2 text-sm text-stone-600">Free is live. Paid INR plans are listed and marked coming soon. GST extra.</p>
             </div>
             <Link href="/pricing" className="text-sm font-bold text-[#0F3D3E]">
-              Full pricing
+              InboxRhino pricing and quotas
             </Link>
           </div>
           <PricingGrid compact />
@@ -101,9 +88,50 @@ export async function MarketingHome() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <h2 className="text-2xl font-bold tracking-[-0.03em]">Explore</h2>
+        <ul className="mt-6 grid gap-4 md:grid-cols-2">
+          <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
+            <Link href="/docs" className="font-bold text-[#0F3D3E] hover:underline">
+              InboxRhino documentation
+            </Link>
+            <p className="mt-2 text-sm leading-6 text-stone-600">Quickstart, API reference, and Playwright examples for wait-for-message tests.</p>
+          </li>
+          <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
+            <Link href="/compare/tigrmail" className="font-bold text-[#0F3D3E] hover:underline">
+              Compare InboxRhino and Tigrmail
+            </Link>
+            <p className="mt-2 text-sm leading-6 text-stone-600">Feature-by-feature notes for teams choosing a receive-only inbox API.</p>
+          </li>
+          <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
+            <Link href="/india" className="font-bold text-[#0F3D3E] hover:underline">
+              INR billing and GST invoices
+            </Link>
+            <p className="mt-2 text-sm leading-6 text-stone-600">Who the India page is for, checkout status, and how GST will be handled.</p>
+          </li>
+          <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
+            {latestPost ? (
+              <>
+                <Link href={`/blog/${latestPost.slug}`} className="font-bold text-[#0F3D3E] hover:underline">
+                  {latestPost.title}
+                </Link>
+                <p className="mt-2 text-sm leading-6 text-stone-600">{latestPost.description}</p>
+              </>
+            ) : (
+              <>
+                <Link href="/blog" className="font-bold text-[#0F3D3E] hover:underline">
+                  InboxRhino blog
+                </Link>
+                <p className="mt-2 text-sm leading-6 text-stone-600">Notes on agentic testing and email verification in CI.</p>
+              </>
+            )}
+          </li>
+        </ul>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <h2 className="text-2xl font-bold tracking-[-0.03em]">FAQ</h2>
         <dl className="mt-8 divide-y divide-[#1C1917]/10 border-y border-[#1C1917]/10">
-          {faqs.map((item) => (
+          {homeFaqs.map((item) => (
             <div key={item.q} className="grid gap-2 py-5 md:grid-cols-[240px_minmax(0,1fr)]">
               <dt className="font-bold">{item.q}</dt>
               <dd className="text-sm leading-6 text-stone-600">{item.a}</dd>

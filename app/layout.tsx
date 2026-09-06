@@ -40,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en-IN">
       <head>
         <script dangerouslySetInnerHTML={{ __html: ahrefsLoader }} />
       </head>

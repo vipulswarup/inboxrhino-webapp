@@ -6,14 +6,17 @@ export function DocsPager() {
       <Link href="/" className="text-[#0F3D3E] hover:underline">
         InboxRhino home
       </Link>
+      <Link href="/docs" className="text-[#0F3D3E] hover:underline">
+        Documentation
+      </Link>
       <Link href="/docs/quickstart" className="text-[#0F3D3E] hover:underline">
-        Quickstart
+        API quickstart
       </Link>
       <Link href="/docs/api" className="text-[#0F3D3E] hover:underline">
         API reference
       </Link>
       <Link href="/docs/playwright" className="text-[#0F3D3E] hover:underline">
-        Playwright
+        Playwright email tests
       </Link>
     </nav>
   );

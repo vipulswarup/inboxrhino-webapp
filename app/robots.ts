@@ -1,13 +1,5 @@
-import type { MetadataRoute } from 'next';
-import { SITE_ORIGIN } from './lib/site';
+import { buildRobots } from './lib/seo';
 
-export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/console', '/openapi.yaml', '/postman/', '/brand/'],
-    },
-    sitemap: `${SITE_ORIGIN}/sitemap.xml`,
-  };
+export default function robots() {
+  return buildRobots();
 }

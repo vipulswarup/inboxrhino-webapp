@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { OPENAPI_PATH, POSTMAN_COLLECTION_PATH } from '@/app/lib/site';
 
 const items = [
-  { href: '/docs/quickstart', label: 'Quickstart' },
+  { href: '/docs', label: 'Docs overview' },
+  { href: '/docs/quickstart', label: 'API quickstart' },
   { href: '/docs/api', label: 'API reference' },
-  { href: '/docs/playwright', label: 'Playwright' },
+  { href: '/docs/playwright', label: 'Playwright email tests' },
 ];
 
 export default function DocsLayout({ children }: { children: ReactNode }) {

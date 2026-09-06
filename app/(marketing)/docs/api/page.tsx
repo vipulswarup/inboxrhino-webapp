@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { CodeSnippet } from '@/app/code-snippet';
 import { Endpoint, SpecTable } from '@/app/doc-ui';
+import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import {
   authHeader,
   createInboxCurl,
@@ -42,10 +44,24 @@ const toc = [
 export default function ApiPage() {
   return (
     <article className="space-y-10 pb-16">
+      <PageBreadcrumbs
+        items={[
+          { name: 'Documentation', path: '/docs' },
+          { name: 'API reference', path: '/docs/api' },
+        ]}
+      />
       <div>
         <h1 className="text-3xl font-bold tracking-[-0.03em]">API reference</h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          InboxRhino is a receive-only test-email API. Create an address, wait for a real inbound message, inspect it, then delete the inbox. There is no send endpoint, no org-wide message search, and no SDK. Call the API from tests, CI, or a backend — browser JavaScript on an arbitrary origin is blocked by CORS.
+          InboxRhino is a receive-only test-email API. Create an address, wait for a real inbound message, inspect it, then delete the inbox. There is no send endpoint, no org-wide message search, and no SDK. Call the API from tests, CI, or a backend — browser JavaScript on an arbitrary origin is blocked by CORS. New here? Start with the{' '}
+          <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+            API quickstart
+          </Link>{' '}
+          or{' '}
+          <Link href="/docs/playwright" className="font-bold text-[#0F3D3E]">
+            Playwright email tests
+          </Link>
+          .
         </p>
       </div>
 

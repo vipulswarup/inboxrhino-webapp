@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { APP_ROBOTS_TXT, isAppHost, isCacheablePublicAsset, isNoindexPath, shouldNoindexAsset } from './app/lib/seo';
 
 const CANONICAL_HOST = 'inboxrhino.in';
 const HTTPS_HOSTS = new Set(['inboxrhino.in', 'www.inboxrhino.in', 'app.inboxrhino.in']);
+
+function withOptionalRobots(hostname: string, pathname: string, response: NextResponse) {
+  if (isAppHost(hostname) || isNoindexPath(pathname) || shouldNoindexAsset(pathname)) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+  if (isCacheablePublicAsset(pathname)) {
+    response.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+  return response;
+}
 
 export function middleware(request: NextRequest) {
   const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase();
@@ -21,7 +32,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
-  return NextResponse.next();
+  if (url.pathname.length > 1 && url.pathname.endsWith('/') && !url.pathname.split('/').pop()?.includes('.')) {
+    url.pathname = url.pathname.replace(/\/+$/, '');
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (isAppHost(host) && url.pathname === '/robots.txt') {
+    return new NextResponse(APP_ROBOTS_TXT, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
+  return withOptionalRobots(host, url.pathname, NextResponse.next());
 }
 
 export const config = {

@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { LogoWordmark } from './brand-logo';
+import { JsonLd } from './json-ld';
+import { siteGraphJsonLd } from './lib/seo';
 import { CONTACT_EMAIL, consoleHref } from './lib/site';
 
 const nav = [
-  { href: '/docs/quickstart', label: 'Docs' },
+  { href: '/docs', label: 'Docs' },
   { href: '/blog', label: 'Blog' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
@@ -14,7 +16,7 @@ export async function SiteHeader() {
   const loginHref = consoleHref((await headers()).get('host'), '/login');
   return (
     <header className="border-b border-[#1C1917]/10 bg-[#F7F4EF]">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <Link href="/" aria-label="InboxRhino home">
           <LogoWordmark />
         </Link>
@@ -24,11 +26,11 @@ export async function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <a href={loginHref} className="px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E]">
-            Sign in
+          <a href={loginHref} title="Sign in to the InboxRhino console" className="px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E]">
+            Console sign in
           </a>
           <a href={loginHref} className="rounded-lg bg-[#0F3D3E] px-3 py-1.5 text-sm font-bold text-white">
-            Get started
+            Create a free test inbox
           </a>
         </nav>
       </div>
@@ -47,24 +49,27 @@ export function SiteFooter() {
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Product</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
               <Link href="/" className={linkClass}>
-                Home
+                InboxRhino home
               </Link>
               <Link href="/pricing" className={linkClass}>
-                Pricing
+                Pricing and quotas
               </Link>
             </nav>
           </div>
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Developers</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
+              <Link href="/docs" className={linkClass}>
+                Documentation
+              </Link>
               <Link href="/docs/quickstart" className={linkClass}>
-                Quickstart
+                API quickstart
               </Link>
               <Link href="/docs/api" className={linkClass}>
                 API reference
               </Link>
               <Link href="/docs/playwright" className={linkClass}>
-                Playwright
+                Playwright email tests
               </Link>
             </nav>
           </div>
@@ -72,13 +77,13 @@ export function SiteFooter() {
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Resources</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
               <Link href="/blog" className={linkClass}>
-                Blog
+                InboxRhino blog
               </Link>
               <Link href="/compare/tigrmail" className={linkClass}>
-                vs Tigrmail
+                InboxRhino vs Tigrmail
               </Link>
               <Link href="/india" className={linkClass}>
-                India / GST
+                INR billing and GST
               </Link>
             </nav>
           </div>
@@ -105,6 +110,7 @@ export function SiteFooter() {
 export async function SiteFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#F4F1EA] text-[#1C1917]">
+      <JsonLd data={siteGraphJsonLd()} />
       <SiteHeader />
       {children}
       <SiteFooter />
