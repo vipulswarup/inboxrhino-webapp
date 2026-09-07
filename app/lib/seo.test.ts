@@ -50,7 +50,7 @@ describe('SEO helpers', () => {
   it('builds robots.txt that allows the public site, points at the sitemap, and does not disallow /', () => {
     const robots = buildRobots();
     const rules = Array.isArray(robots.rules) ? robots.rules[0] : robots.rules;
-    expect(rules.allow).toEqual(expect.arrayContaining(['/', OG_IMAGE_PATH]));
+    expect(rules.allow).toEqual(expect.arrayContaining(['/', '/compare/', OG_IMAGE_PATH]));
     expect(rules.disallow).toEqual(expect.arrayContaining(['/console', '/login', '/openapi.yaml', '/postman/', '/brand/']));
     expect(rules.disallow).not.toContain('/');
     expect(robots.sitemap).toBe(`${SITE_ORIGIN}/sitemap.xml`);

@@ -25,6 +25,8 @@ export const PUBLIC_PATHS = [
   '/docs/api',
   '/docs/playwright',
   '/compare/tigrmail',
+  '/compare/mailosaur',
+  '/compare/mailhog',
   '/india',
   '/legal',
 ] as const;
@@ -188,7 +190,7 @@ export function buildRobots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', OG_IMAGE_PATH, '/brand/logo-icon.svg'],
+      allow: ['/', '/compare/', OG_IMAGE_PATH, '/brand/logo-icon.svg'],
       disallow: ['/console', '/login', '/openapi.yaml', '/postman/', '/brand/'],
     },
     sitemap: `${SITE_ORIGIN}/sitemap.xml`,

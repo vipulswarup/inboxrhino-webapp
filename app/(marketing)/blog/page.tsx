@@ -14,6 +14,8 @@ const topics = [
   { href: '/docs/playwright', label: 'Playwright email tests' },
   { href: '/docs/quickstart', label: 'API quickstart' },
   { href: '/compare/tigrmail', label: 'InboxRhino vs Tigrmail' },
+  { href: '/compare/mailosaur', label: 'InboxRhino vs Mailosaur' },
+  { href: '/compare/mailhog', label: 'InboxRhino vs MailHog' },
 ];
 
 export default function BlogIndexPage() {

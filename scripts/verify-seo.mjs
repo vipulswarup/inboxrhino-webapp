@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   '/docs/api',
   '/docs/playwright',
   '/compare/tigrmail',
+  '/compare/mailosaur',
+  '/compare/mailhog',
   '/india',
   '/legal',
 ];

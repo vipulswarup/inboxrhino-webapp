@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { CompareTable } from '@/app/compare-table';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -43,26 +44,7 @@ export default function CompareTigrmailPage() {
         </p>
       </section>
 
-      <div className="mt-10 overflow-x-auto rounded-[22px] border border-[#1C1917]/10 bg-white">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-[#1C1917]/10 bg-[#F7F4EF] text-xs uppercase tracking-wide text-stone-500">
-            <tr>
-              <th className="px-4 py-3 font-bold">Capability</th>
-              <th className="px-4 py-3 font-bold">InboxRhino</th>
-              <th className="px-4 py-3 font-bold">Tigrmail</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row[0]} className="border-b border-[#1C1917]/10 last:border-0">
-                <td className="px-4 py-3 text-stone-700">{row[0]}</td>
-                <td className="px-4 py-3 text-stone-700">{row[1]}</td>
-                <td className="px-4 py-3 text-stone-700">{row[2]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <CompareTable columns={['Capability', 'InboxRhino', 'Tigrmail']} rows={rows} />
 
       <p className="mt-6 text-xs leading-5 text-stone-500">
         Compared on 6 September 2026 from InboxRhino&apos;s live product and Tigrmail&apos;s public site. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
@@ -75,6 +57,14 @@ export default function CompareTigrmailPage() {
         , the{' '}
         <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           API quickstart
+        </Link>
+        ,{' '}
+        <Link href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs Mailosaur
+        </Link>
+        ,{' '}
+        <Link href="/compare/mailhog" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs MailHog and Mailpit
         </Link>
         , and{' '}
         <Link href="/india" className="font-bold text-[#0F3D3E]">

@@ -100,7 +100,17 @@ export async function MarketingHome() {
             <Link href="/compare/tigrmail" className="font-bold text-[#0F3D3E] hover:underline">
               Compare InboxRhino and Tigrmail
             </Link>
-            <p className="mt-2 text-sm leading-6 text-stone-600">Feature-by-feature notes for teams choosing a receive-only inbox API.</p>
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              Feature-by-feature notes for teams choosing a receive-only inbox API. Also see{' '}
+              <Link href="/compare/mailosaur" className="font-bold text-[#0F3D3E] hover:underline">
+                InboxRhino vs Mailosaur
+              </Link>
+              {' and '}
+              <Link href="/compare/mailhog" className="font-bold text-[#0F3D3E] hover:underline">
+                InboxRhino vs MailHog
+              </Link>
+              .
+            </p>
           </li>
           <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
             <Link href="/india" className="font-bold text-[#0F3D3E] hover:underline">

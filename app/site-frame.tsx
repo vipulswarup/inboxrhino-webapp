@@ -82,6 +82,12 @@ export function SiteFooter() {
               <Link href="/compare/tigrmail" className={linkClass}>
                 InboxRhino vs Tigrmail
               </Link>
+              <Link href="/compare/mailosaur" className={linkClass}>
+                InboxRhino vs Mailosaur
+              </Link>
+              <Link href="/compare/mailhog" className={linkClass}>
+                InboxRhino vs MailHog
+              </Link>
               <Link href="/india" className={linkClass}>
                 INR billing and GST
               </Link>
