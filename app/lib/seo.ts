@@ -1,13 +1,13 @@
 import type { Metadata, MetadataRoute } from 'next';
 import {
   CONTACT_EMAIL,
+  ARGALI_ORIGIN,
   LEGAL_NAME,
   OFFICE_ADDRESS,
   OG_IMAGE_ALT,
   OG_IMAGE_HEIGHT,
   OG_IMAGE_PATH,
   OG_IMAGE_WIDTH,
-  SAME_AS,
   SITE_ORIGIN,
 } from './site';
 
@@ -83,16 +83,26 @@ export function organizationNode(): JsonLd {
   return {
     '@type': 'Organization',
     '@id': `${SITE_ORIGIN}/#organization`,
-    name: 'InboxRhino',
+    name: LEGAL_NAME,
     legalName: LEGAL_NAME,
-    url: SITE_ORIGIN,
+    url: ARGALI_ORIGIN,
     logo: absoluteUrl('/brand/logo-icon.svg'),
     email: CONTACT_EMAIL,
     address: {
       '@type': 'PostalAddress',
       ...OFFICE_ADDRESS,
     },
-    sameAs: [...SAME_AS],
+    brand: { '@id': `${SITE_ORIGIN}/#brand` },
+  };
+}
+
+export function brandNode(): JsonLd {
+  return {
+    '@type': 'Brand',
+    '@id': `${SITE_ORIGIN}/#brand`,
+    name: 'InboxRhino',
+    url: SITE_ORIGIN,
+    logo: absoluteUrl('/brand/logo-icon.svg'),
   };
 }
 
@@ -101,6 +111,7 @@ export function siteGraphJsonLd(): JsonLd {
     '@context': 'https://schema.org',
     '@graph': [
       organizationNode(),
+      brandNode(),
       {
         '@type': 'WebSite',
         '@id': `${SITE_ORIGIN}/#website`,
@@ -108,6 +119,7 @@ export function siteGraphJsonLd(): JsonLd {
         url: SITE_ORIGIN,
         inLanguage: 'en-IN',
         publisher: { '@id': `${SITE_ORIGIN}/#organization` },
+        about: { '@id': `${SITE_ORIGIN}/#brand` },
       },
     ],
   };
@@ -152,6 +164,7 @@ export function softwareApplicationJsonLd(): JsonLd {
     description:
       'Receive-only test email API with real MX inboxes, wait-for-message, and a sandboxed HTML viewer for signup, OTP, and password-reset tests.',
     publisher: { '@id': `${SITE_ORIGIN}/#organization` },
+    brand: { '@id': `${SITE_ORIGIN}/#brand` },
     offers: {
       '@type': 'Offer',
       price: '0',
@@ -190,8 +203,8 @@ export function buildRobots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/compare/', OG_IMAGE_PATH, '/brand/logo-icon.svg'],
-      disallow: ['/console', '/login', '/openapi.yaml', '/postman/', '/brand/'],
+      allow: ['/', '/compare/', '/brand/', '/openapi.yaml', '/postman/'],
+      disallow: ['/console', '/login'],
     },
     sitemap: `${SITE_ORIGIN}/sitemap.xml`,
     host: SITE_ORIGIN.replace(/^https:\/\//, ''),
@@ -232,9 +245,10 @@ export function isNoindexPath(pathname: string): boolean {
   );
 }
 
-export function shouldNoindexAsset(pathname: string): boolean {
-  if (pathname === OG_IMAGE_PATH || pathname === '/brand/logo-icon.svg') return false;
-  return pathname.startsWith('/brand/');
+export function robotsHeaderValue(hostname: string, pathname: string): string | null {
+  if (pathname === '/openapi.yaml' || pathname.startsWith('/postman/')) return 'noindex, follow';
+  if (isAppHost(hostname) || isNoindexPath(pathname)) return 'noindex, nofollow';
+  return null;
 }
 
 export function isCacheablePublicAsset(pathname: string): boolean {

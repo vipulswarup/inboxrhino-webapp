@@ -36,7 +36,7 @@ export default function DocsIndexPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-[-0.03em]">Documentation</h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          InboxRhino is a receive-only test-email API. These pages are the public contract: how to create an inbox, wait for real mail, and clean up so quota is released. There is no send endpoint and no SDK.
+          InboxRhino is a receive-only test-email API. These pages are the public contract: how to create an inbox, wait for real mail, and clean up so quota is released. There is no send endpoint. Use the REST API directly; official SDK packaging is planned only after the API surface is stable.
         </p>
       </div>
       <ul className="grid gap-4">
@@ -50,13 +50,13 @@ export default function DocsIndexPage() {
         ))}
       </ul>
       <p className="text-sm leading-6 text-stone-600">
-        Downloads:{' '}
+        Developer resources:{' '}
         <a href={POSTMAN_COLLECTION_PATH} download="InboxRhino.postman_collection.json" className="font-bold text-[#0F3D3E]">
-          Postman collection
+          downloadable Postman collection
         </a>
         {' · '}
         <a href={OPENAPI_PATH} download="inboxrhino.openapi.yaml" className="font-bold text-[#0F3D3E]">
-          OpenAPI spec
+          OpenAPI specification
         </a>
         . Quotas and GST status are on{' '}
         <Link href="/pricing" className="font-bold text-[#0F3D3E]">

@@ -14,27 +14,81 @@ export const metadata: Metadata = pageMeta(
 
 const playwrightTest = `import { test, expect } from '@playwright/test';
 
-test('reads the signup verification email', async ({ request }) => {
-  const key = process.env.INBOXRHINO_API_KEY!;
-  const created = await request.post('${API_ORIGIN}/v1/inboxes', {
-    headers: { Authorization: \`Bearer \${key}\` },
-  });
-  const inbox = await created.json();
+const API = '${API_ORIGIN}';
 
-  // Trigger the app under test to send mail to inbox.data.address
+async function responseError(response: { status(): number; text(): Promise<string> }) {
+  return \`HTTP \${response.status()}: \${await response.text()}\`;
+}
 
-  const mail = await request.get(
-    \`${API_ORIGIN}/v1/inboxes/\${inbox.data.id}/messages?wait_seconds=180&limit=1&include=content&subject=Verify\`,
-    { headers: { Authorization: \`Bearer \${key}\` } },
-  );
-  expect(mail.ok()).toBeTruthy();
-  const body = await mail.json();
-  expect(body.data[0].subject).toMatch(/verify/i);
+test('completes signup through the verification email', async ({ page, request }) => {
+  const key = process.env.INBOXRHINO_API_KEY;
+  test.skip(!key, 'Set INBOXRHINO_API_KEY');
+  if (!key) return;
+  const auth = { Authorization: \`Bearer \${key}\` };
+  const startedAt = new Date().toISOString();
+  const prefix = \`signup-\${Date.now().toString(36)}\`;
+  let inboxId: string | undefined;
 
-  await request.delete(\`${API_ORIGIN}/v1/inboxes/\${inbox.data.id}\`, {
-    headers: { Authorization: \`Bearer \${key}\` },
-  });
+  try {
+    const created = await request.post(\`\${API}/v1/inboxes\`, {
+      headers: { ...auth, 'Content-Type': 'application/json' },
+      data: { prefix },
+    });
+    expect(created.status(), await responseError(created)).toBe(201);
+    const inbox = await created.json();
+    inboxId = inbox.data.id;
+
+    await page.goto(process.env.SIGNUP_URL ?? 'http://localhost:3000/signup');
+    await page.getByLabel('Email').fill(inbox.data.address);
+    await page.getByRole('button', { name: /sign up|create account/i }).click();
+
+    const query = new URLSearchParams({
+      wait_seconds: '180',
+      limit: '1',
+      include: 'content',
+      subject: 'Verify',
+      sender: 'noreply@example.com',
+      received_after: startedAt,
+    });
+    const mail = await request.get(\`\${API}/v1/inboxes/\${inboxId}/messages?\${query}\`, {
+      headers: auth,
+      timeout: 190_000,
+    });
+    expect(mail.status(), mail.status() === 204
+      ? 'No matching message arrived within 180 seconds'
+      : await responseError(mail)).toBe(200);
+
+    const body = await mail.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].subject).toMatch(/verify/i);
+    const html = body.data[0].html ?? '';
+    const verificationUrl = html.match(/href=["'](https?:\\/\\/[^"']+)["']/i)?.[1];
+    expect(verificationUrl, 'Verification link missing from message HTML').toBeTruthy();
+    await page.goto(verificationUrl!);
+    await expect(page.getByText(/verified|account is ready/i)).toBeVisible();
+  } finally {
+    if (inboxId) {
+      const deleted = await request.delete(\`\${API}/v1/inboxes/\${inboxId}\`, { headers: auth });
+      expect(deleted.status(), await responseError(deleted)).toBe(204);
+    }
+  }
 });`;
+
+const githubActions = `name: Playwright email test
+on: [push]
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env:
+          INBOXRHINO_API_KEY: \${{ secrets.INBOXRHINO_API_KEY }}
+          SIGNUP_URL: https://staging.example.com/signup`;
 
 export default function PlaywrightPage() {
   return (
@@ -63,6 +117,12 @@ export default function PlaywrightPage() {
       </section>
       <CodeSnippet code={playwrightTest} />
       <section className="space-y-3">
+        <h2 className="text-xl font-bold">Adapt the two application-specific lines</h2>
+        <p className="text-sm leading-6 text-stone-600">
+          Replace the signup URL, form labels, sender address and final success assertion with values from your application. Keep the InboxRhino lifecycle, the <code className="font-mono text-xs">received_after</code> boundary and cleanup unchanged. If your email contains several links, parse the one your application owns rather than selecting the first link.
+        </p>
+      </section>
+      <section className="space-y-3">
         <h2 className="text-xl font-bold">CI notes</h2>
         <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-stone-600">
           <li>
@@ -78,6 +138,13 @@ export default function PlaywrightPage() {
             Local SMTP catchers such as Mailpit work on a laptop and disappear in GitHub Actions. InboxRhino is a real MX address, so the same test can run in CI.
           </li>
         </ul>
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold">GitHub Actions</h2>
+        <p className="text-sm leading-6 text-stone-600">
+          Add <code className="font-mono text-xs">INBOXRHINO_API_KEY</code> as a repository or environment secret. Point <code className="font-mono text-xs">SIGNUP_URL</code> at a test environment that can send real email.
+        </p>
+        <CodeSnippet code={githubActions} />
       </section>
       <p className="text-sm leading-6 text-stone-600">
         New to the API?{' '}

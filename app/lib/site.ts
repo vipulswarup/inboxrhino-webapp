@@ -4,11 +4,11 @@ export const API_ORIGIN = 'https://api.inboxrhino.in';
 export const FILES_ORIGIN = 'https://files.inboxrhino.in';
 export const CONTACT_EMAIL = 'contact@inboxrhino.in';
 export const LEGAL_NAME = 'Argali Knowledge Services Pvt Ltd';
+export const ARGALI_ORIGIN = 'https://argali.in';
 export const OG_IMAGE_PATH = '/brand/og-default.png';
 export const OG_IMAGE_ALT = 'InboxRhino receive-only test email inboxes';
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
-export const SAME_AS = ['https://argali.in', 'https://www.eisenvault.com'] as const;
 export const OFFICE_ADDRESS = {
   streetAddress: '4th Floor, Statesman House, Barakhamba Road',
   addressLocality: 'New Delhi',

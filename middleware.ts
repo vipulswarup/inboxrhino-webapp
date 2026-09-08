@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { APP_ROBOTS_TXT, isAppHost, isCacheablePublicAsset, isNoindexPath, shouldNoindexAsset } from './app/lib/seo';
+import { APP_ROBOTS_TXT, isAppHost, isCacheablePublicAsset, robotsHeaderValue } from './app/lib/seo';
 
 const CANONICAL_HOST = 'inboxrhino.in';
 const HTTPS_HOSTS = new Set(['inboxrhino.in', 'www.inboxrhino.in', 'app.inboxrhino.in']);
 
 function withOptionalRobots(hostname: string, pathname: string, response: NextResponse) {
-  if (isAppHost(hostname) || isNoindexPath(pathname) || shouldNoindexAsset(pathname)) {
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-  }
+  const robots = robotsHeaderValue(hostname, pathname);
+  if (robots) response.headers.set('X-Robots-Tag', robots);
   if (isCacheablePublicAsset(pathname)) {
     response.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
   }

@@ -1,0 +1,21 @@
+{
+  "name": "inboxrhino-playwright-signup-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runnable Playwright example for signup email verification with InboxRhino",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": [
+    "inboxrhino",
+    "playwright",
+    "email-testing",
+    "email-verification",
+    "e2e-testing"
+  ],
+  "homepage": "https://inboxrhino.in/docs/playwright",
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "typescript": "^5.9.3"
+  }
+}
