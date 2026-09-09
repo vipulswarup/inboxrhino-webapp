@@ -10,7 +10,7 @@ import { DocsPager } from '@/app/docs-pager';
 export const metadata: Metadata = pageMeta(
   '/docs/quickstart',
   'InboxRhino quickstart — create an inbox and assert the email',
-  'Create an InboxRhino API key, provision a real test inbox, wait for signup or reset mail, then delete the inbox. Copy-paste curl and Playwright in about five minutes.',
+  'Create an InboxRhino API key, provision a real test inbox, wait for signup or reset mail, then delete it. Copy-paste curl and Playwright in five minutes.',
 );
 
 const createInbox = `curl --request POST ${API_ORIGIN}/v1/inboxes \\

@@ -7,7 +7,7 @@ import { pageMeta } from '@/app/lib/seo';
 export const metadata: Metadata = pageMeta(
   '/legal',
   'InboxRhino privacy policy and terms of service',
-  'Privacy policy and terms for InboxRhino, the receive-only test email API. Covers account data, 30-day message retention, Firebase auth, Cloudflare infrastructure and Google Analytics.',
+  'Privacy policy and terms for InboxRhino, the receive-only test email API. Covers account data, 30-day message retention, auth and infrastructure.',
 );
 
 export default function LegalPage() {

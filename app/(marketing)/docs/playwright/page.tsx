@@ -9,7 +9,7 @@ import { DocsPager } from '@/app/docs-pager';
 export const metadata: Metadata = pageMeta(
   '/docs/playwright',
   'Test signup email in Playwright with InboxRhino',
-  'Assert real signup, OTP and password-reset email from Playwright. No plugin: create an InboxRhino inbox, wait for the message, then delete it so quota is released.',
+  'Assert real signup, OTP and password-reset email from Playwright. No plugin: create an InboxRhino inbox, wait for the message, then delete it.',
 );
 
 const playwrightTest = `import { test, expect } from '@playwright/test';

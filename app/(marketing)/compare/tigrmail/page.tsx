@@ -7,7 +7,7 @@ import { pageMeta } from '@/app/lib/seo';
 export const metadata: Metadata = pageMeta(
   '/compare/tigrmail',
   'InboxRhino vs Tigrmail — visual inbox and named API keys',
-  'Compare InboxRhino and Tigrmail for receive-only email testing. InboxRhino adds a sandboxed HTML inbox, multiple API keys, and INR billing designed for Indian teams.',
+  'Compare InboxRhino and Tigrmail for receive-only email testing. InboxRhino adds a sandboxed HTML inbox, multiple API keys and INR billing for Indian teams.',
 );
 
 const rows = [

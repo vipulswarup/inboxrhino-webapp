@@ -10,7 +10,7 @@ import { pageMeta } from './lib/seo';
 const marketingMeta = pageMeta(
   '/',
   'InboxRhino — real inboxes for signup, OTP and password-reset tests',
-  'Create a real MX inbox, catch signup verification, OTP and password-reset email in automated tests, and open the HTML in the browser. Free tier is live. INR billing is coming.',
+  'Create a real MX inbox, catch signup verification, OTP and password-reset email in automated tests, and open the HTML in the browser. Free tier is live.',
 );
 
 export async function generateMetadata(): Promise<Metadata> {
