@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { formatPostDate, getAllPosts } from '@/app/lib/blog';
 import { pageMeta } from '@/app/lib/seo';
@@ -33,9 +32,9 @@ export default function BlogIndexPage() {
           {topics.map((topic, index) => (
             <span key={topic.href}>
               {index > 0 ? ' · ' : null}
-              <Link href={topic.href} className="font-bold text-[#0F3D3E]">
+              <a href={topic.href} className="font-bold text-[#0F3D3E]">
                 {topic.label}
-              </Link>
+              </a>
             </span>
           ))}
         </p>
@@ -47,16 +46,16 @@ export default function BlogIndexPage() {
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">
               InboxRhino · {formatPostDate(post.date)}
             </p>
-            <Link
+            <a
               href={`/blog/${post.slug}`}
               className="mt-2 block text-2xl font-bold tracking-[-0.03em] text-[#1C1917] hover:text-[#0F3D3E]"
             >
               {post.title}
-            </Link>
+            </a>
             <p className="mt-2 text-sm leading-6 text-stone-600">{post.description}</p>
-            <Link href={`/blog/${post.slug}`} className="mt-4 inline-block text-sm font-bold text-[#0F3D3E]">
+            <a href={`/blog/${post.slug}`} className="mt-4 inline-block text-sm font-bold text-[#0F3D3E]">
               Read the article
-            </Link>
+            </a>
           </li>
         ))}
       </ul>

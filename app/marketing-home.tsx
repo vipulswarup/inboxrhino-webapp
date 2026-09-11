@@ -1,11 +1,10 @@
-import Link from 'next/link';
 import { headers } from 'next/headers';
 import { CodeSnippet } from './code-snippet';
 import { JsonLd } from './json-ld';
 import { getAllPosts } from './lib/blog';
 import { faqPageJsonLd, softwareApplicationJsonLd } from './lib/seo';
 import { consoleHref, homeFaqs, waitSnippet } from './lib/site';
-import { MessageViewer } from './message-viewer';
+import { MarketingMailboxDemo } from './marketing-mailbox-demo';
 import { PricingGrid } from './pricing-grid';
 
 const reasons = [
@@ -43,9 +42,9 @@ export async function MarketingHome() {
             <a href={loginHref} className="rounded-lg bg-[#0F3D3E] px-4 py-2.5 text-sm font-bold text-white">
               Create a free test inbox
             </a>
-            <Link href="/docs/quickstart" className="rounded-lg border border-[#1C1917]/15 px-4 py-2.5 text-sm font-bold text-[#1C1917]">
+            <a href="/docs/quickstart" className="rounded-lg border border-[#1C1917]/15 px-4 py-2.5 text-sm font-bold text-[#1C1917]">
               Read the InboxRhino API quickstart
-            </Link>
+            </a>
           </div>
         </div>
         <CodeSnippet code={waitSnippet} />
@@ -58,7 +57,7 @@ export async function MarketingHome() {
             The console is a sandboxed mailbox viewer. Scripts, forms, popups, and remote images are blocked.
           </p>
           <div className="mt-8 overflow-hidden rounded-[22px] border border-[#1C1917]/10 bg-white">
-            <MessageViewer embed />
+            <MarketingMailboxDemo />
           </div>
         </div>
       </section>
@@ -79,9 +78,9 @@ export async function MarketingHome() {
               <h2 className="text-2xl font-bold tracking-[-0.03em]">Pricing</h2>
               <p className="mt-2 text-sm text-stone-600">Free is live. Paid INR plans are listed and marked coming soon. GST extra.</p>
             </div>
-            <Link href="/pricing" className="text-sm font-bold text-[#0F3D3E]">
+            <a href="/pricing" className="text-sm font-bold text-[#0F3D3E]">
               InboxRhino pricing and quotas
-            </Link>
+            </a>
           </div>
           <PricingGrid compact />
         </div>
@@ -91,46 +90,46 @@ export async function MarketingHome() {
         <h2 className="text-2xl font-bold tracking-[-0.03em]">Explore</h2>
         <ul className="mt-6 grid gap-4 md:grid-cols-2">
           <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
-            <Link href="/docs" className="font-bold text-[#0F3D3E] hover:underline">
+            <a href="/docs" className="font-bold text-[#0F3D3E] hover:underline">
               InboxRhino documentation
-            </Link>
+            </a>
             <p className="mt-2 text-sm leading-6 text-stone-600">Quickstart, API reference, and Playwright examples for wait-for-message tests.</p>
           </li>
           <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
-            <Link href="/compare/tigrmail" className="font-bold text-[#0F3D3E] hover:underline">
+            <a href="/compare/tigrmail" className="font-bold text-[#0F3D3E] hover:underline">
               Compare InboxRhino and Tigrmail
-            </Link>
+            </a>
             <p className="mt-2 text-sm leading-6 text-stone-600">
               Feature-by-feature notes for teams choosing a receive-only inbox API. Also see{' '}
-              <Link href="/compare/mailosaur" className="font-bold text-[#0F3D3E] hover:underline">
+              <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E] hover:underline">
                 InboxRhino vs Mailosaur
-              </Link>
+              </a>
               {' and '}
-              <Link href="/compare/mailhog" className="font-bold text-[#0F3D3E] hover:underline">
+              <a href="/compare/mailhog" className="font-bold text-[#0F3D3E] hover:underline">
                 InboxRhino vs MailHog
-              </Link>
+              </a>
               .
             </p>
           </li>
           <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
-            <Link href="/india" className="font-bold text-[#0F3D3E] hover:underline">
+            <a href="/india" className="font-bold text-[#0F3D3E] hover:underline">
               INR billing and GST invoices
-            </Link>
+            </a>
             <p className="mt-2 text-sm leading-6 text-stone-600">Who the India page is for, checkout status, and how GST will be handled.</p>
           </li>
           <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
             {latestPost ? (
               <>
-                <Link href={`/blog/${latestPost.slug}`} className="font-bold text-[#0F3D3E] hover:underline">
+                <a href={`/blog/${latestPost.slug}`} className="font-bold text-[#0F3D3E] hover:underline">
                   {latestPost.title}
-                </Link>
+                </a>
                 <p className="mt-2 text-sm leading-6 text-stone-600">{latestPost.description}</p>
               </>
             ) : (
               <>
-                <Link href="/blog" className="font-bold text-[#0F3D3E] hover:underline">
+                <a href="/blog" className="font-bold text-[#0F3D3E] hover:underline">
                   InboxRhino blog
-                </Link>
+                </a>
                 <p className="mt-2 text-sm leading-6 text-stone-600">Notes on agentic testing and email verification in CI.</p>
               </>
             )}

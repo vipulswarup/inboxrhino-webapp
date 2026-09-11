@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { CONTACT_EMAIL } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
@@ -87,17 +86,17 @@ export default function AboutPage() {
 
       <p className="text-sm leading-6 text-stone-600">
         For privacy and terms, see the{' '}
-        <Link href="/legal" className="font-bold text-[#0F3D3E]">
+        <a href="/legal" className="font-bold text-[#0F3D3E]">
           privacy policy and terms of service
-        </Link>
+        </a>
         . Product limits are on{' '}
-        <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+        <a href="/pricing" className="font-bold text-[#0F3D3E]">
           InboxRhino pricing
-        </Link>
+        </a>
         . Start with the{' '}
-        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           API quickstart
-        </Link>
+        </a>
         .
       </p>
     </main>

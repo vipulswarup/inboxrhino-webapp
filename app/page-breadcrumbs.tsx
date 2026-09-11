@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { JsonLd } from './json-ld';
 import { breadcrumbListJsonLd, type Crumb } from './lib/seo';
 
@@ -18,9 +17,9 @@ export function PageBreadcrumbs({ items }: { items: Crumb[] }) {
                     {item.name}
                   </span>
                 ) : (
-                  <Link href={item.path} className="font-semibold text-[#0F3D3E] hover:underline">
+                  <a href={item.path} className="font-semibold text-[#0F3D3E] hover:underline">
                     {item.name}
-                  </Link>
+                  </a>
                 )}
                 {last ? null : (
                   <span aria-hidden="true" className="text-stone-400">

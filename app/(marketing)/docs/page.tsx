@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { OPENAPI_PATH, POSTMAN_COLLECTION_PATH } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
@@ -42,9 +41,9 @@ export default function DocsIndexPage() {
       <ul className="grid gap-4">
         {guides.map((guide) => (
           <li key={guide.href} className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
-            <Link href={guide.href} className="text-lg font-bold text-[#0F3D3E] hover:underline">
+            <a href={guide.href} className="text-lg font-bold text-[#0F3D3E] hover:underline">
               {guide.title}
-            </Link>
+            </a>
             <p className="mt-2 text-sm leading-6 text-stone-600">{guide.body}</p>
           </li>
         ))}
@@ -59,9 +58,9 @@ export default function DocsIndexPage() {
           OpenAPI specification
         </a>
         . Quotas and GST status are on{' '}
-        <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+        <a href="/pricing" className="font-bold text-[#0F3D3E]">
           InboxRhino pricing
-        </Link>
+        </a>
         .
       </p>
       <DocsPager />

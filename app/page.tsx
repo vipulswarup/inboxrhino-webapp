@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { ConsoleHome } from './console-home';
-import { ConsoleProviders } from './console-providers';
 import { MarketingHome } from './marketing-home';
 import { SiteFrame } from './site-frame';
 import { isConsoleHost } from './lib/site';
@@ -25,11 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   if (isConsoleHost((await headers()).get('host'))) {
-    return (
-      <ConsoleProviders>
-        <ConsoleHome />
-      </ConsoleProviders>
-    );
+    const { ConsoleRoot } = await import('./console-root');
+    return <ConsoleRoot />;
   }
 
   return (

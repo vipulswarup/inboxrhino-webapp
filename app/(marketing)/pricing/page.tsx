@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { headers } from 'next/headers';
 import { JsonLd } from '@/app/json-ld';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
@@ -43,9 +42,9 @@ export default async function PricingPage() {
             <li>Free is the only live plan today. There is no overage billing; the API and SMTP reject work that exceeds the free cap.</li>
             <li>Starter, Growth, and Scale prices are listed so teams can plan. Checkout is not open, so those prices are not a current offer.</li>
             <li>When paid checkout ships, GST will be added on top of the listed INR amount. See{' '}
-              <Link href="/india" className="font-bold text-[#0F3D3E]">
+              <a href="/india" className="font-bold text-[#0F3D3E]">
                 INR billing and GST invoices
-              </Link>
+              </a>
               .
             </li>
             <li>
@@ -60,13 +59,13 @@ export default async function PricingPage() {
           Create a free test inbox
         </a>
         {' · '}
-        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           Read the InboxRhino API quickstart
-        </Link>
+        </a>
         {' · '}
-        <Link href="/legal" className="font-bold text-[#0F3D3E]">
+        <a href="/legal" className="font-bold text-[#0F3D3E]">
           Privacy and terms
-        </Link>
+        </a>
       </p>
     </main>
   );

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { headers } from 'next/headers';
 import { CodeSnippet } from '@/app/code-snippet';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
@@ -43,9 +42,9 @@ export default async function QuickstartPage() {
         <h1 className="text-3xl font-bold tracking-[-0.03em]">Quickstart</h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
           Five minutes from signup to a passing wait-for-message request. Keep the API key in a secret manager; it is shown only once. The free tier is 11 active inboxes and 33 inbound emails per UTC month — enough for one flow on a laptop. Quota detail is on{' '}
-          <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+          <a href="/pricing" className="font-bold text-[#0F3D3E]">
             InboxRhino pricing
-          </Link>
+          </a>
           .
         </p>
       </div>
@@ -76,17 +75,17 @@ export default async function QuickstartPage() {
         <h2 className="text-xl font-bold">4. Delete the inbox</h2>
         <p className="text-sm leading-6 text-stone-600">
           Deleting an inbox frees active-inbox quota immediately. Message deletion does not restore monthly email quota. Full request and error detail, plus a free{' '}
-          <Link href="/docs/api#downloads" className="font-bold text-[#0F3D3E]">
+          <a href="/docs/api#downloads" className="font-bold text-[#0F3D3E]">
             Postman collection
-          </Link>
+          </a>
           , is on the{' '}
-          <Link href="/docs/api" className="font-bold text-[#0F3D3E]">
+          <a href="/docs/api" className="font-bold text-[#0F3D3E]">
             API reference
-          </Link>
+          </a>
           . For a test runner example, see{' '}
-          <Link href="/docs/playwright" className="font-bold text-[#0F3D3E]">
+          <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
             Playwright email tests
-          </Link>
+          </a>
           .
         </p>
         <CodeSnippet code={deleteInbox} />
@@ -95,9 +94,9 @@ export default async function QuickstartPage() {
         <h2 className="text-xl font-bold">If the wait returns 204</h2>
         <p className="text-sm leading-6 text-stone-600">
           HTTP 204 means the poll timed out with no match. Check the address you sent to, loosen or correct the subject/sender filter, and confirm the application actually sent mail. Do not call <code className="font-mono text-xs">response.json()</code> on 204. Status codes and filters are documented in the{' '}
-          <Link href="/docs/api#messages" className="font-bold text-[#0F3D3E]">
+          <a href="/docs/api#messages" className="font-bold text-[#0F3D3E]">
             messages API
-          </Link>
+          </a>
           .
         </p>
       </section>

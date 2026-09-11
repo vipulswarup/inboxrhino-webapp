@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { CodeSnippet } from '@/app/code-snippet';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { API_ORIGIN } from '@/app/lib/site';
@@ -109,9 +108,9 @@ export default function PlaywrightPage() {
         <h2 className="text-xl font-bold">Signup verification example</h2>
         <p className="text-sm leading-6 text-stone-600">
           The pattern is the same for OTP and magic-link tests: allocate an address, drive the UI, wait with a subject or sender filter, parse HTML or text, then delete the inbox. Handle HTTP 200 (match) and 204 (timeout) separately — do not parse JSON on 204. Query rules are on the{' '}
-          <Link href="/docs/api#messages" className="font-bold text-[#0F3D3E]">
+          <a href="/docs/api#messages" className="font-bold text-[#0F3D3E]">
             messages API
-          </Link>
+          </a>
           .
         </p>
       </section>
@@ -148,13 +147,13 @@ export default function PlaywrightPage() {
       </section>
       <p className="text-sm leading-6 text-stone-600">
         New to the API?{' '}
-        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           Read the InboxRhino API quickstart
-        </Link>
+        </a>
         . Quotas are listed on{' '}
-        <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+        <a href="/pricing" className="font-bold text-[#0F3D3E]">
           InboxRhino pricing
-        </Link>
+        </a>
         .
       </p>
       <DocsPager />

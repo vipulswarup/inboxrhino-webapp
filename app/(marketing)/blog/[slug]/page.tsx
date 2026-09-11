@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/app/json-ld';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
@@ -67,17 +66,17 @@ export default async function BlogPostPage({ params }: PageProps) {
       <article className={`mt-10 ${proseClassName}`} dangerouslySetInnerHTML={{ __html: post.html }} />
       <p className="mt-12 text-sm leading-6 text-stone-600">
         Next:{' '}
-        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           Read the InboxRhino API quickstart
-        </Link>
+        </a>
         {' · '}
-        <Link href="/docs/playwright" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
           Test signup email in Playwright
-        </Link>
+        </a>
         {' · '}
-        <Link href="/compare/tigrmail" className="font-bold text-[#0F3D3E]">
+        <a href="/compare/tigrmail" className="font-bold text-[#0F3D3E]">
           Compare InboxRhino and Tigrmail
-        </Link>
+        </a>
       </p>
     </main>
   );

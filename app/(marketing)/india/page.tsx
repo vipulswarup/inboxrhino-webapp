@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { CONTACT_EMAIL } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
@@ -24,9 +23,9 @@ export default function IndiaPage() {
           <li>Live: free tier, real MX on test.inboxrhino.in, wait-for-message API, sandboxed viewer.</li>
           <li>Coming: Razorpay checkout in INR only, GST extra on listed prices, GSTIN capture, GST-compatible invoicing.</li>
           <li>Listed paid amounts: Starter ₹199, Growth ₹999, Scale ₹2,499 per month before GST. See the{' '}
-            <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+            <a href="/pricing" className="font-bold text-[#0F3D3E]">
               pricing page
-            </Link>
+            </a>
             .
           </li>
         </ul>
@@ -55,13 +54,13 @@ export default function IndiaPage() {
         </p>
       </section>
       <p className="mt-8 text-sm text-stone-600">
-        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           Read the InboxRhino API quickstart
-        </Link>
+        </a>
         {' · '}
-        <Link href="/about" className="font-bold text-[#0F3D3E]">
+        <a href="/about" className="font-bold text-[#0F3D3E]">
           About Argali and InboxRhino
-        </Link>
+        </a>
       </p>
     </main>
   );

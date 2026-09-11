@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { OPENAPI_PATH, POSTMAN_COLLECTION_PATH } from '@/app/lib/site';
 
 const items = [
@@ -15,13 +14,13 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
       <aside>
         <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Docs</p>
         <nav className="flex flex-col gap-1 text-sm font-semibold">
-          <Link href="/" className="rounded-lg px-2 py-1.5 text-stone-700 hover:bg-white hover:text-[#0F3D3E]">
+          <a href="/" className="rounded-lg px-2 py-1.5 text-stone-700 hover:bg-white hover:text-[#0F3D3E]">
             InboxRhino home
-          </Link>
+          </a>
           {items.map((item) => (
-            <Link key={item.href} href={item.href} className="rounded-lg px-2 py-1.5 text-stone-700 hover:bg-white hover:text-[#0F3D3E]">
+            <a key={item.href} href={item.href} className="rounded-lg px-2 py-1.5 text-stone-700 hover:bg-white hover:text-[#0F3D3E]">
               {item.label}
-            </Link>
+            </a>
           ))}
         </nav>
         <p className="mt-6 mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Downloads</p>

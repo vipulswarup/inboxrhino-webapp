@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { CompareTable } from '@/app/compare-table';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { pageMeta } from '@/app/lib/seo';
@@ -51,25 +50,25 @@ export default function CompareTigrmailPage() {
       </p>
       <p className="mt-8 text-sm text-stone-600">
         See{' '}
-        <Link href="/pricing" className="font-bold text-[#0F3D3E]">
+        <a href="/pricing" className="font-bold text-[#0F3D3E]">
           InboxRhino pricing and quotas
-        </Link>
+        </a>
         , the{' '}
-        <Link href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
           API quickstart
-        </Link>
+        </a>
         ,{' '}
-        <Link href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">
+        <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">
           InboxRhino vs Mailosaur
-        </Link>
+        </a>
         ,{' '}
-        <Link href="/compare/mailhog" className="font-bold text-[#0F3D3E]">
+        <a href="/compare/mailhog" className="font-bold text-[#0F3D3E]">
           InboxRhino vs MailHog and Mailpit
-        </Link>
+        </a>
         , and{' '}
-        <Link href="/india" className="font-bold text-[#0F3D3E]">
+        <a href="/india" className="font-bold text-[#0F3D3E]">
           INR billing and GST invoices
-        </Link>
+        </a>
         .
       </p>
     </main>

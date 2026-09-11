@@ -6,6 +6,12 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+  {
+    files: ['app/brand-logo.tsx'],
+    rules: {
+      '@next/next/no-img-element': 'off',
+    },
+  },
 ]);
 
 export default eslintConfig;
