@@ -7,7 +7,7 @@ import { pageMeta } from '@/app/lib/seo';
 export const metadata: Metadata = pageMeta(
   '/india',
   'InboxRhino for India — INR pricing and GST invoices',
-  'InboxRhino is built for Indian SaaS and QA teams. The free test-email API is live now. Paid plans will checkout in INR through Razorpay with GST invoices. Checkout is not open yet.',
+  'InboxRhino is built for Indian SaaS and QA teams. The free test-email API is live now. INR plans with GST invoices are coming; checkout is not open yet.',
 );
 
 export default function IndiaPage() {

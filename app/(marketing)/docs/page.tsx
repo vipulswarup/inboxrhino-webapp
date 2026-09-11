@@ -8,7 +8,7 @@ import { DocsPager } from '@/app/docs-pager';
 export const metadata: Metadata = pageMeta(
   '/docs',
   'InboxRhino docs — quickstart, API reference and Playwright',
-  'Documentation for InboxRhino receive-only test inboxes: create an address, wait for signup or OTP mail, inspect it, then delete the inbox. Includes curl, OpenAPI and Playwright.',
+  'Documentation for InboxRhino receive-only test inboxes: create an address, wait for signup or OTP mail, inspect it, then delete it. Curl, OpenAPI, Playwright.',
 );
 
 const guides = [

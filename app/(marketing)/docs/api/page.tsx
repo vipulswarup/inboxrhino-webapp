@@ -23,7 +23,7 @@ import { DocsPager } from '@/app/docs-pager';
 export const metadata: Metadata = pageMeta(
   '/docs/api',
   'InboxRhino API reference — inboxes, messages and wait-for-mail',
-  'Full /v1 reference for InboxRhino: authentication, create inbox, wait for messages, attachments, usage, error codes, OpenAPI and a free Postman collection for testers and agents.',
+  'Full /v1 reference for InboxRhino: authentication, create inbox, wait for messages, attachments, usage and error codes. Includes OpenAPI and Postman.',
 );
 
 const toc = [
