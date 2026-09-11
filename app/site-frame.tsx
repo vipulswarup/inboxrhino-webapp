@@ -68,7 +68,7 @@ export function SiteFooter() {
                 API reference
               </a>
               <a href="/docs/playwright" className={linkClass}>
-                Playwright email tests
+                Playwright email testing
               </a>
             </nav>
           </div>
@@ -82,10 +82,16 @@ export function SiteFooter() {
                 InboxRhino vs Tigrmail
               </a>
               <a href="/compare/mailosaur" className={linkClass}>
-                InboxRhino vs Mailosaur
+                Mailosaur alternative
               </a>
               <a href="/compare/mailhog" className={linkClass}>
-                InboxRhino vs MailHog
+                MailHog alternative
+              </a>
+              <a href="/compare/mailslurp" className={linkClass}>
+                InboxRhino vs MailSlurp
+              </a>
+              <a href="/compare/testmail" className={linkClass}>
+                InboxRhino vs testmail.app
               </a>
               <a href="/india" className={linkClass}>
                 INR billing and GST

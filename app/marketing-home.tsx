@@ -102,11 +102,19 @@ export async function MarketingHome() {
             <p className="mt-2 text-sm leading-6 text-stone-600">
               Feature-by-feature notes for teams choosing a receive-only inbox API. Also see{' '}
               <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E] hover:underline">
-                InboxRhino vs Mailosaur
+                Mailosaur alternative
+              </a>
+              ,{' '}
+              <a href="/compare/mailhog" className="font-bold text-[#0F3D3E] hover:underline">
+                MailHog alternative
+              </a>
+              ,{' '}
+              <a href="/compare/mailslurp" className="font-bold text-[#0F3D3E] hover:underline">
+                InboxRhino vs MailSlurp
               </a>
               {' and '}
-              <a href="/compare/mailhog" className="font-bold text-[#0F3D3E] hover:underline">
-                InboxRhino vs MailHog
+              <a href="/compare/testmail" className="font-bold text-[#0F3D3E] hover:underline">
+                InboxRhino vs testmail.app
               </a>
               .
             </p>

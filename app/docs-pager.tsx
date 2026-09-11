@@ -14,7 +14,7 @@ export function DocsPager() {
         API reference
       </a>
       <a href="/docs/playwright" className="text-[#0F3D3E] hover:underline">
-        Playwright email tests
+        Playwright email testing
       </a>
     </nav>
   );

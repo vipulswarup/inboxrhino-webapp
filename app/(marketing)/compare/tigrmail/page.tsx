@@ -59,11 +59,19 @@ export default function CompareTigrmailPage() {
         </a>
         ,{' '}
         <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">
-          InboxRhino vs Mailosaur
+          Mailosaur alternative
         </a>
         ,{' '}
         <a href="/compare/mailhog" className="font-bold text-[#0F3D3E]">
-          InboxRhino vs MailHog and Mailpit
+          MailHog alternative
+        </a>
+        ,{' '}
+        <a href="/compare/mailslurp" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs MailSlurp
+        </a>
+        ,{' '}
+        <a href="/compare/testmail" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs testmail.app
         </a>
         , and{' '}
         <a href="/india" className="font-bold text-[#0F3D3E]">

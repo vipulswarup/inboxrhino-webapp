@@ -5,8 +5,8 @@ import { pageMeta } from '@/app/lib/seo';
 
 export const metadata: Metadata = pageMeta(
   '/compare/mailhog',
-  'InboxRhino vs MailHog and Mailpit — when local SMTP is not enough',
-  'Compare InboxRhino with MailHog and Mailpit. InboxRhino is a real MX inbox for CI. Mailpit is a free local SMTP catcher that does not receive public mail.',
+  'MailHog alternative — InboxRhino vs MailHog and Mailpit',
+  'Need a MailHog alternative for CI? InboxRhino is a real MX inbox. Mailpit is the free local SMTP catcher when localhost is enough.',
 );
 
 const rows = [
@@ -23,10 +23,10 @@ const rows = [
 export default function CompareMailhogPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-      <PageBreadcrumbs items={[{ name: 'InboxRhino vs MailHog and Mailpit', path: '/compare/mailhog' }]} />
-      <h1 className="text-4xl font-bold tracking-[-0.04em]">InboxRhino vs MailHog and Mailpit</h1>
+      <PageBreadcrumbs items={[{ name: 'MailHog alternative', path: '/compare/mailhog' }]} />
+      <h1 className="text-4xl font-bold tracking-[-0.04em]">MailHog alternative: InboxRhino vs MailHog and Mailpit</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
-        MailHog and Mailpit are local SMTP catchers. They are the right tool when the application can send to localhost on a developer machine. They are the wrong tool when staging sends through a real provider to a real address, or when CI has no sidecar. InboxRhino is a hosted receive-only MX inbox for that second case. Confirm current Mailpit behaviour on{' '}
+        Looking for a MailHog alternative? MailHog and Mailpit are local SMTP catchers. They are the right tool when the application can send to localhost on a developer machine. They are the wrong tool when staging sends through a real provider to a real address, or when CI has no sidecar. InboxRhino is a hosted receive-only MX inbox for that second case. Confirm current Mailpit behaviour on{' '}
         <a href="https://mailpit.axllent.org" className="font-bold text-[#0F3D3E]" rel="noopener noreferrer">
           mailpit.axllent.org
         </a>
@@ -55,7 +55,7 @@ export default function CompareMailhogPage() {
       <p className="mt-8 text-sm text-stone-600">
         See{' '}
         <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
-          Playwright email tests
+          Playwright email testing
         </a>
         ,{' '}
         <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">
@@ -67,7 +67,15 @@ export default function CompareMailhogPage() {
         </a>
         , and{' '}
         <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">
-          InboxRhino vs Mailosaur
+          Mailosaur alternative
+        </a>
+        ,{' '}
+        <a href="/compare/mailslurp" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs MailSlurp
+        </a>
+        , and{' '}
+        <a href="/compare/testmail" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs testmail.app
         </a>
         .
       </p>

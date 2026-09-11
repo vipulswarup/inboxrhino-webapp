@@ -10,11 +10,13 @@ export const metadata: Metadata = pageMeta(
 );
 
 const topics = [
-  { href: '/docs/playwright', label: 'Playwright email tests' },
+  { href: '/docs/playwright', label: 'Playwright email testing' },
   { href: '/docs/quickstart', label: 'API quickstart' },
   { href: '/compare/tigrmail', label: 'InboxRhino vs Tigrmail' },
-  { href: '/compare/mailosaur', label: 'InboxRhino vs Mailosaur' },
-  { href: '/compare/mailhog', label: 'InboxRhino vs MailHog' },
+  { href: '/compare/mailosaur', label: 'Mailosaur alternative' },
+  { href: '/compare/mailhog', label: 'MailHog alternative' },
+  { href: '/compare/mailslurp', label: 'InboxRhino vs MailSlurp' },
+  { href: '/compare/testmail', label: 'InboxRhino vs testmail.app' },
 ];
 
 export default function BlogIndexPage() {

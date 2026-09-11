@@ -5,8 +5,8 @@ import { pageMeta } from '@/app/lib/seo';
 
 export const metadata: Metadata = pageMeta(
   '/compare/mailosaur',
-  'InboxRhino vs Mailosaur — a Mailosaur alternative for email-only tests',
-  'Compare InboxRhino and Mailosaur for email-only tests. InboxRhino has a free tier and visual inbox. Mailosaur adds SMS, SDKs, and USD plans from $20 a month.',
+  'Mailosaur alternative — InboxRhino vs Mailosaur for email tests',
+  'Looking for a Mailosaur alternative? Compare InboxRhino for free-tier email-only tests with a visual inbox. Mailosaur adds SMS, SDKs and USD plans.',
 );
 
 const rows = [
@@ -25,10 +25,10 @@ const rows = [
 export default function CompareMailosaurPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-      <PageBreadcrumbs items={[{ name: 'InboxRhino vs Mailosaur', path: '/compare/mailosaur' }]} />
-      <h1 className="text-4xl font-bold tracking-[-0.04em]">InboxRhino vs Mailosaur</h1>
+      <PageBreadcrumbs items={[{ name: 'Mailosaur alternative', path: '/compare/mailosaur' }]} />
+      <h1 className="text-4xl font-bold tracking-[-0.04em]">Mailosaur alternative: InboxRhino vs Mailosaur</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
-        Mailosaur is a paid QA platform for email and SMS. InboxRhino is a receive-only test-email API with a sandboxed HTML mailbox. Choose InboxRhino when you only need signup, OTP, magic-link, or password-reset mail in Playwright or Cypress. Choose Mailosaur when you need SMS, official SDKs, client previews, or a USD QA platform with a trial rather than a free tier. Confirm current Mailosaur behaviour on{' '}
+        Searching for a Mailosaur alternative for email-only tests? Mailosaur is a paid QA platform for email and SMS. InboxRhino is a receive-only test-email API with a sandboxed HTML mailbox. Choose InboxRhino when you only need signup, OTP, magic-link, or password-reset mail in Playwright or Cypress. Choose Mailosaur when you need SMS, official SDKs, client previews, or a USD QA platform with a trial rather than a free tier. Confirm current Mailosaur behaviour on{' '}
         <a href="https://mailosaur.com" className="font-bold text-[#0F3D3E]" rel="noopener noreferrer">
           mailosaur.com
         </a>
@@ -57,7 +57,7 @@ export default function CompareMailosaurPage() {
         </a>
         , the{' '}
         <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
-          Playwright email tests
+          Playwright email testing
         </a>
         ,{' '}
         <a href="/compare/tigrmail" className="font-bold text-[#0F3D3E]">
@@ -65,7 +65,15 @@ export default function CompareMailosaurPage() {
         </a>
         ,{' '}
         <a href="/compare/mailhog" className="font-bold text-[#0F3D3E]">
-          InboxRhino vs MailHog and Mailpit
+          MailHog alternative
+        </a>
+        ,{' '}
+        <a href="/compare/mailslurp" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs MailSlurp
+        </a>
+        ,{' '}
+        <a href="/compare/testmail" className="font-bold text-[#0F3D3E]">
+          InboxRhino vs testmail.app
         </a>
         , and{' '}
         <a href="/india" className="font-bold text-[#0F3D3E]">

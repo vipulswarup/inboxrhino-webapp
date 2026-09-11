@@ -71,11 +71,15 @@ export default async function BlogPostPage({ params }: PageProps) {
         </a>
         {' · '}
         <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
-          Test signup email in Playwright
+          Playwright email testing
         </a>
         {' · '}
         <a href="/compare/tigrmail" className="font-bold text-[#0F3D3E]">
           Compare InboxRhino and Tigrmail
+        </a>
+        {' · '}
+        <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">
+          Mailosaur alternative
         </a>
       </p>
     </main>

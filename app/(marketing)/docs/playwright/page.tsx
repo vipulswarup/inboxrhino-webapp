@@ -7,8 +7,8 @@ import { DocsPager } from '@/app/docs-pager';
 
 export const metadata: Metadata = pageMeta(
   '/docs/playwright',
-  'Test signup email in Playwright with InboxRhino',
-  'Assert real signup, OTP and password-reset email from Playwright. No plugin: create an InboxRhino inbox, wait for the message, then delete it.',
+  'Playwright email testing — signup, OTP and magic links',
+  'Playwright email testing with InboxRhino: create a real inbox, wait for signup or OTP mail, assert the message, then delete the inbox.',
 );
 
 const playwrightTest = `import { test, expect } from '@playwright/test';
@@ -95,13 +95,13 @@ export default function PlaywrightPage() {
       <PageBreadcrumbs
         items={[
           { name: 'Documentation', path: '/docs' },
-          { name: 'Playwright email tests', path: '/docs/playwright' },
+          { name: 'Playwright email testing', path: '/docs/playwright' },
         ]}
       />
       <div>
-        <h1 className="text-3xl font-bold tracking-[-0.03em]">Playwright</h1>
+        <h1 className="text-3xl font-bold tracking-[-0.03em]">Playwright email testing</h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          There is no official plugin. Use <code className="font-mono text-xs">fetch</code> or Playwright&apos;s <code className="font-mono text-xs">request</code> API against a real InboxRhino inbox. That covers signup verification, OTP codes, magic links and password resets without MailHog or a USD QA platform. Wait up to 180 seconds, then delete the inbox so quota is released.
+          Playwright email testing without a plugin: use <code className="font-mono text-xs">fetch</code> or Playwright&apos;s <code className="font-mono text-xs">request</code> API against a real InboxRhino inbox. Cover signup verification, OTP codes, magic links and password resets without MailHog or a USD QA platform. Wait up to 180 seconds, then delete the inbox so quota is released.
         </p>
       </div>
       <section className="space-y-3">

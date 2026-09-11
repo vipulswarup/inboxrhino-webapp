@@ -84,7 +84,7 @@ export default async function QuickstartPage() {
           </a>
           . For a test runner example, see{' '}
           <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
-            Playwright email tests
+            Playwright email testing
           </a>
           .
         </p>

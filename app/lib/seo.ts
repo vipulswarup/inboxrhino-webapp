@@ -27,6 +27,8 @@ export const PUBLIC_PATHS = [
   '/compare/tigrmail',
   '/compare/mailosaur',
   '/compare/mailhog',
+  '/compare/mailslurp',
+  '/compare/testmail',
   '/india',
   '/legal',
 ] as const;

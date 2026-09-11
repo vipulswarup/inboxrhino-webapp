@@ -58,7 +58,7 @@ export default function ApiPage() {
           </a>{' '}
           or{' '}
           <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
-            Playwright email tests
+            Playwright email testing
           </a>
           .
         </p>

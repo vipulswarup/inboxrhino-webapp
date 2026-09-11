@@ -23,7 +23,7 @@ const guides = [
   },
   {
     href: '/docs/playwright',
-    title: 'Playwright email tests',
+    title: 'Playwright email testing',
     body: 'Assert signup, OTP and password-reset mail from Playwright without a plugin.',
   },
 ];
