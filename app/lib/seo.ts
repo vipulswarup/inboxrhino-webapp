@@ -208,7 +208,7 @@ export function buildRobots(): MetadataRoute.Robots {
       allow: ['/', '/compare/', '/brand/', '/openapi.yaml', '/postman/'],
       disallow: ['/console', '/login'],
     },
-    sitemap: `${SITE_ORIGIN}/sitemap.xml`,
+    sitemap: [`${SITE_ORIGIN}/sitemap.xml`, `${SITE_ORIGIN}/news/sitemap.xml`],
     host: SITE_ORIGIN.replace(/^https:\/\//, ''),
   };
 }

@@ -56,7 +56,10 @@ describe('SEO helpers', () => {
     expect(rules.disallow).toEqual(expect.arrayContaining(['/console', '/login']));
     expect(rules.disallow).not.toEqual(expect.arrayContaining(['/openapi.yaml', '/postman/', '/brand/']));
     expect(rules.disallow).not.toContain('/');
-    expect(robots.sitemap).toBe(`${SITE_ORIGIN}/sitemap.xml`);
+    expect(robots.sitemap).toEqual([
+      `${SITE_ORIGIN}/sitemap.xml`,
+      `${SITE_ORIGIN}/news/sitemap.xml`,
+    ]);
   });
 
   it('includes only indexable public paths in the sitemap', () => {

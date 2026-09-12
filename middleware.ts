@@ -31,7 +31,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
-  if (url.pathname.length > 1 && url.pathname.endsWith('/') && !url.pathname.split('/').pop()?.includes('.')) {
+  // Keep /news paths intact so the Stork Wire proxy rewrite can match as-is.
+  if (
+    !url.pathname.startsWith('/news') &&
+    url.pathname.length > 1 &&
+    url.pathname.endsWith('/') &&
+    !url.pathname.split('/').pop()?.includes('.')
+  ) {
     url.pathname = url.pathname.replace(/\/+$/, '');
     return NextResponse.redirect(url, 301);
   }

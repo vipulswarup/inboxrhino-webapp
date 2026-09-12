@@ -7,6 +7,7 @@ import { CONTACT_EMAIL, consoleHref } from './lib/site';
 const nav = [
   { href: '/docs', label: 'Docs' },
   { href: '/blog', label: 'Blog' },
+  { href: '/news', label: 'News' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/about', label: 'About' },
 ];
@@ -77,6 +78,9 @@ export function SiteFooter() {
             <nav className="flex flex-col gap-2 text-sm font-semibold">
               <a href="/blog" className={linkClass}>
                 InboxRhino blog
+              </a>
+              <a href="/news" className={linkClass}>
+                News
               </a>
               <a href="/compare/tigrmail" className={linkClass}>
                 InboxRhino vs Tigrmail

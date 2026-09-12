@@ -59,6 +59,9 @@ async function main() {
   const robotsType = robots.response.headers.get('content-type') || '';
   if (!robotsType.includes('text/plain')) fail(`/robots.txt content-type was ${robotsType}`);
   if (!robots.text.includes(`Sitemap: ${SITE_ORIGIN}/sitemap.xml`)) fail('robots.txt missing sitemap line');
+  if (!robots.text.includes(`Sitemap: ${SITE_ORIGIN}/news/sitemap.xml`)) {
+    fail('robots.txt missing news sitemap line');
+  }
   if (/^Disallow: \/$/m.test(robots.text)) fail('robots.txt accidentally disallows /');
 
   const sitemap = await get('/sitemap.xml');
