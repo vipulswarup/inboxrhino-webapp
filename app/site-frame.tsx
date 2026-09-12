@@ -117,6 +117,9 @@ export function SiteFooter() {
             </nav>
           </div>
         </div>
+        <div className="mt-8">
+          <a href="https://www.stork.ai/" rel="nofollow" title="Stork Verified — stork.ai AI tools directory"><img src="https://www.stork.ai/badge/verified-dark.svg" alt="Stork Verified — stork.ai AI tools directory" width="216" height="44" /></a>
+        </div>
       </div>
     </footer>
   );
