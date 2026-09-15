@@ -12,7 +12,11 @@
   "vars": {
     "CLOUDFLARE_ZONE_ID": "d0a3fc64c2ebccc7ecf09e4f3355913f",
     "EMAIL_WORKER_NAME": "inboxrhino-api",
-    "INBOX_DOMAIN": "test.inboxrhino.in"
+    "INBOX_DOMAIN": "test.inboxrhino.in",
+    "ENVIRONMENT": "production",
+    "SETUP_ENABLED": "false",
+    "ALLOWED_CORS_ORIGINS": "https://app.inboxrhino.in",
+    "TURNSTILE_ALLOWED_HOSTNAMES": "app.inboxrhino.in"
   },
   "routes": [
     { "pattern": "api.inboxrhino.in", "custom_domain": true },

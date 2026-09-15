@@ -8,6 +8,17 @@ export const FREE_EMAIL_LIMIT = 33;
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 export const AUDIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 export const IDEMPOTENCY_MS = 24 * 60 * 60 * 1000;
+export const MAX_RAW_EMAIL_BYTES = 10 * 1024 * 1024;
+export const MAX_ATTACHMENT_COUNT = 25;
+export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+export const MAX_DECODED_EMAIL_BYTES = 10 * 1024 * 1024;
+export const MAX_EMAIL_PART_BYTES = 1024 * 1024;
+export const MAX_EMAIL_HEADERS = 500;
+export const MAX_FILENAME_BYTES = 255;
+export const MAX_CONTENT_TYPE_BYTES = 255;
+export const INBOX_BURST_LIMIT = 10;
+export const ORGANISATION_BURST_LIMIT = 25;
+export const EMAIL_BURST_WINDOW_MS = 5 * 60 * 1000;
 
 const adjectives = ['bright', 'calm', 'cheerful', 'clever', 'gentle', 'lucky', 'merry', 'quiet', 'swift', 'warm'];
 const animals = ['badger', 'falcon', 'gecko', 'koala', 'otter', 'panda', 'rhino', 'tiger', 'wren', 'yak'];
@@ -93,10 +104,10 @@ export function parseRfc3339(value: string) {
 }
 
 export function generatedPrefix() {
-  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  const bytes = crypto.getRandomValues(new Uint8Array(2));
   const adjective = adjectives[bytes[0] % adjectives.length];
   const animal = animals[bytes[1] % animals.length];
-  const suffix = Array.from(bytes.slice(2), (part) => (part % 36).toString(36)).join('');
+  const suffix = randomToken(6);
   return `${adjective}-${animal}-${suffix}`;
 }
 
@@ -115,4 +126,8 @@ export async function sleep(milliseconds: number) {
 export function contentBytes(content: ArrayBuffer | Uint8Array | string) {
   if (typeof content === 'string') return encoder.encode(content);
   return content instanceof Uint8Array ? content : new Uint8Array(content);
+}
+
+export function utf8Length(value: string) {
+  return encoder.encode(value).byteLength;
 }

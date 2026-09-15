@@ -208,6 +208,7 @@ export default function ApiPage() {
         />
         <p className="text-sm leading-6 text-stone-600">
           Email quota is reserved when the message is accepted. Failed parse or persistence releases that reservation. Over-quota inbound SMTP is rejected with <code className="font-mono text-xs">Monthly recipient quota exceeded</code> and is not stored. Mail to an unknown or deleted address is rejected with <code className="font-mono text-xs">Recipient address rejected</code>.
+          To contain accidental loops and mail bombing, each inbox accepts at most 10 messages and each organisation at most 25 messages per five-minute rate-limit bucket. Messages are limited to 10 MiB raw, 25 attachments, 5 MiB per attachment, 10 MiB decoded content, and 1 MiB each of text and HTML.
         </p>
       </section>
 
@@ -241,7 +242,7 @@ export default function ApiPage() {
               ],
             ]}
           />
-          <p className="text-sm leading-6 text-stone-600">Success is 201. Omit prefix to receive a generated local-part such as bright-otter-ab12.</p>
+          <p className="text-sm leading-6 text-stone-600">Success is 201. Omit prefix to receive a high-entropy generated local-part such as bright-otter-a1b2c3d4e5f6.</p>
           <CodeSnippet code={createInboxCurl} />
           <CodeSnippet code={inboxCreatedExample} />
         </Endpoint>

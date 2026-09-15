@@ -63,8 +63,9 @@ export function requireOwner(c: Parameters<typeof consoleAuth>[0]) {
 
 export function requireRecentAuth(c: Parameters<typeof consoleAuth>[0]) {
   const auth = c.get('consoleAuth');
-  const cutoff = Math.floor(Date.now() / 1000) - 10 * 60;
-  if (auth.authTime < cutoff) {
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff = now - 10 * 60;
+  if (!Number.isSafeInteger(auth.authTime) || auth.authTime < cutoff || auth.authTime > now + 60) {
     return jsonError(c, 403, 'reauthentication_required', 'Sign in again to perform this action.');
   }
   return null;

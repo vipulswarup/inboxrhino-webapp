@@ -111,6 +111,7 @@ Import `postman/InboxRhino.postman_collection.json` for the same lifecycle with 
 - `POST /v1/inboxes` idempotency keys last 24 hours. Concurrent reuse returns `idempotency_in_progress`; reuse with another normalized body returns `idempotency_key_reused`.
 - Normal API traffic is limited to 120 requests/minute/API key and 600 requests/minute/organisation.
 - Free organisations may have 11 active or provisioning inboxes and receive 33 successfully stored messages per UTC calendar month.
+- Inbound mail is limited to 10 messages per inbox and 25 per organisation in each five-minute bucket. Raw messages are capped at 10 MiB, with at most 25 attachments, 5 MiB per attachment, 10 MiB total decoded content, and 1 MiB each for text and HTML.
 - Messages and attachments expire after 30 days. Metadata-only security audit events expire after 90 days.
 - All errors use `{ "error": { "code", "message", "request_id" } }`; `X-Request-Id` is also returned as a response header.
 

@@ -3,6 +3,7 @@ import { verifyFirebaseIdToken } from './firebase-auth';
 import { consoleAuth, requireOwner, requireRecentAuth, requireVerifiedEmail } from './console-auth';
 import { createEmailRoute, deleteEmailRoute, EmailRoutingError } from './email-routing';
 import { verifyTurnstile } from './turnstile';
+import { consumeRateLimit, currentRateLimitCount } from './rate-limit';
 import type { AttachmentRow, Env, InboxRow, MessageRow, Variables } from './types';
 import {
   AUDIT_RETENTION_MS,
@@ -26,21 +27,6 @@ consoleApp.use('*', async (c, next) => {
   c.header('Cache-Control', 'private, no-store');
   await next();
 });
-
-async function consumeRateLimit(db: D1Database, scope: string, limit: number, windowMs: number) {
-  const now = Date.now();
-  const bucket = String(Math.floor(now / windowMs));
-  const expiresAt = now + windowMs + 60_000;
-  await db
-    .prepare(
-      `INSERT INTO rate_limits (scope, bucket, count, expires_at) VALUES (?, ?, 1, ?)
-       ON CONFLICT(scope, bucket) DO UPDATE SET count = count + 1`,
-    )
-    .bind(scope, bucket, expiresAt)
-    .run();
-  const row = await db.prepare('SELECT count FROM rate_limits WHERE scope = ? AND bucket = ?').bind(scope, bucket).first<{ count: number }>();
-  return (row?.count ?? limit + 1) <= limit;
-}
 
 function isBlockedSignupEmail(email: string, inboxDomain: string) {
   const normalized = email.trim().toLowerCase();
@@ -115,12 +101,25 @@ consoleApp.post('/session', async (c) => {
   if (!idToken) return jsonError(c, 422, 'invalid_request', 'id_token is required.');
 
   const remoteIp = c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() ?? null;
+  const authFailureScope = remoteIp ? `auth-fail:ip:${remoteIp}` : null;
+  const authFailureWindowMs = 15 * 60 * 1000;
+
+  if (authFailureScope && (await currentRateLimitCount(c.env.DB, authFailureScope, authFailureWindowMs)) >= 10) {
+    c.header('Retry-After', '900');
+    return jsonError(c, 429, 'authentication_rate_limited', 'Too many failed sign-in attempts. Try again later.');
+  }
 
   let claims;
   try {
     claims = await verifyFirebaseIdToken(idToken, c.env.FIREBASE_PROJECT_ID);
   } catch {
-    if (remoteIp) await consumeRateLimit(c.env.DB, `auth-fail:ip:${remoteIp}`, 10, 15 * 60 * 1000);
+    if (authFailureScope) {
+      const result = await consumeRateLimit(c.env.DB, authFailureScope, 10, authFailureWindowMs);
+      if (!result.allowed) {
+        c.header('Retry-After', String(result.retryAfterSeconds));
+        return jsonError(c, 429, 'authentication_rate_limited', 'Too many failed sign-in attempts. Try again later.');
+      }
+    }
     return jsonError(c, 401, 'invalid_token', 'The authentication token is invalid or expired.');
   }
 
@@ -134,13 +133,23 @@ consoleApp.post('/session', async (c) => {
 
   if (isNewUser) {
     if (!turnstileToken) return jsonError(c, 422, 'invalid_request', 'turnstile_token is required for new accounts.');
-    const turnstileOk = await verifyTurnstile(c.env.TURNSTILE_SECRET_KEY, turnstileToken, remoteIp);
+    const allowedHostnames = (c.env.TURNSTILE_ALLOWED_HOSTNAMES ?? 'app.inboxrhino.in')
+      .split(',')
+      .map((hostname) => hostname.trim().toLowerCase())
+      .filter(Boolean);
+    const turnstileOk = await verifyTurnstile(c.env.TURNSTILE_SECRET_KEY, turnstileToken, remoteIp, {
+      allowedHostnames,
+      expectedAction: 'signup',
+    });
     if (!turnstileOk) return jsonError(c, 403, 'turnstile_failed', 'Human verification failed. Please try again.');
   }
 
   if (isNewUser && remoteIp) {
-    const allowed = await consumeRateLimit(c.env.DB, `signup:ip:${remoteIp}`, 5, 60 * 60 * 1000);
-    if (!allowed) return jsonError(c, 429, 'signup_rate_limited', 'Too many sign-ups from this network. Try again later.');
+    const result = await consumeRateLimit(c.env.DB, `signup:ip:${remoteIp}`, 5, 60 * 60 * 1000);
+    if (!result.allowed) {
+      c.header('Retry-After', String(result.retryAfterSeconds));
+      return jsonError(c, 429, 'signup_rate_limited', 'Too many sign-ups from this network. Try again later.');
+    }
   }
 
   let userId = existingUser?.id;

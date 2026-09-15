@@ -83,6 +83,10 @@ beforeEach(async () => {
     INBOX_DOMAIN: 'test.inboxrhino.in',
     FIREBASE_PROJECT_ID: 'inboxrhino-test',
     TURNSTILE_SECRET_KEY: '1x000000000000000000000000000000AA',
+    TURNSTILE_ALLOWED_HOSTNAMES: 'app.inboxrhino.in',
+    ALLOWED_CORS_ORIGINS: 'https://app.inboxrhino.in',
+    ENVIRONMENT: 'test',
+    SETUP_ENABLED: 'false',
   };
   pending = [];
   routeSequence = 0;
@@ -138,8 +142,22 @@ describe('OpenAPI contract', () => {
 });
 
 describe('InboxRhino API contract', () => {
+  it('only grants CORS access to exact configured origins and keeps setup disabled', async () => {
+    const allowed = await request('/health', { headers: { Origin: 'https://app.inboxrhino.in' } }, '');
+    expect(allowed.headers.get('Access-Control-Allow-Origin')).toBe('https://app.inboxrhino.in');
+    const sibling = await request('/health', { headers: { Origin: 'https://audit-test.chatgpt.site' } }, '');
+    expect(sibling.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    const deceptive = await request('/health', { headers: { Origin: 'https://app.inboxrhino.in.attacker.example' } }, '');
+    expect(deceptive.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    const setup = await request('/setup', { method: 'POST', headers: { 'X-Setup-Token': 'setup-test' } }, '');
+    expect(setup.status).toBe(404);
+  });
+
   it('requires authentication and returns the documented empty list envelope', async () => {
-    expect((await request('/v1/usage', {}, '')).status).toBe(401);
+    const unauthorized = await request('/v1/usage', {}, '');
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(unauthorized.headers.get('Strict-Transport-Security')).toContain('includeSubDomains');
     const response = await request('/v1/inboxes');
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ data: [], next_cursor: null });
@@ -279,6 +297,38 @@ describe('InboxRhino API contract', () => {
     expect(messages?.count).toBe(1);
   });
 
+  it('rejects oversized messages before quota use and limits a recipient burst', async () => {
+    const now = Date.now();
+    await env.DB.prepare(
+      "INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES ('inbox_limits', 'org_test', 'dom_test', 'limits', 'limits@test.inboxrhino.in', 'active', ?)",
+    )
+      .bind(now)
+      .run();
+    const raw = 'From: sender@example.com\r\nTo: limits@test.inboxrhino.in\r\nSubject: limits\r\n\r\nHello';
+    const makeMessage = (rawSize = raw.length) => ({
+      from: 'sender@example.com',
+      to: 'limits@test.inboxrhino.in',
+      raw: new Response(raw).body!,
+      rawSize,
+      headers: new Headers(),
+      setReject: vi.fn(),
+    }) as unknown as ForwardableEmailMessage;
+
+    const oversized = makeMessage(10 * 1024 * 1024 + 1);
+    await receiveEmail(oversized, env);
+    expect(oversized.setReject).toHaveBeenCalledWith('Message exceeds the maximum accepted size');
+
+    const messages = Array.from({ length: 11 }, () => makeMessage());
+    for (const message of messages) await receiveEmail(message, env);
+    expect(messages[10].setReject).toHaveBeenCalledWith('Recipient is temporarily rate limited');
+    const stored = await env.DB.prepare("SELECT COUNT(*) AS count FROM messages WHERE inbox_id = 'inbox_limits'").first<{ count: number }>();
+    const usage = await env.DB.prepare('SELECT received_count FROM usage_counters WHERE organisation_id = ? AND period_start = ?')
+      .bind('org_test', currentPeriod().key)
+      .first<{ received_count: number }>();
+    expect(stored?.count).toBe(10);
+    expect(usage?.received_count).toBe(10);
+  });
+
   it('drains every expired-message cleanup batch', async () => {
     const now = Date.now();
     await env.DB.prepare(
@@ -314,8 +364,23 @@ describe('authenticated console lifecycle', () => {
       env.DB.prepare("INSERT INTO users (id, firebase_uid, email, email_verified, created_at, last_login_at) VALUES ('user_console', 'firebase_console', 'owner@example.com', ?, ?, ?)").bind(verified ? 1 : 0, now, now),
       env.DB.prepare("INSERT INTO organisation_members (organisation_id, user_id, role, joined_at) VALUES ('org_test', 'user_console', 'owner', ?)").bind(now),
     ]);
-    vi.mocked(verifyFirebaseIdToken).mockResolvedValue({ sub: 'firebase_console', email: 'owner@example.com', email_verified: verified, auth_time: Math.floor(now / 1000), exp: Math.floor(now / 1000) + 3600, iss: 'test', aud: 'inboxrhino-test' });
+    vi.mocked(verifyFirebaseIdToken).mockResolvedValue({ sub: 'firebase_console', email: 'owner@example.com', email_verified: verified, auth_time: Math.floor(now / 1000), iat: Math.floor(now / 1000), exp: Math.floor(now / 1000) + 3600, iss: 'test', aud: 'inboxrhino-test' });
   }
+
+  it('rate limits repeated invalid session tokens', async () => {
+    vi.mocked(verifyFirebaseIdToken).mockRejectedValue(new Error('invalid_token'));
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      const response = await request('/console/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '192.0.2.20' },
+        body: JSON.stringify({ id_token: 'invalid' }),
+      }, '');
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(401));
+    expect(statuses[10]).toBe(429);
+  });
 
   it('shows email received through a console-generated API key, including every attachment', async () => {
     await consoleUser();

@@ -1,13 +1,17 @@
 export interface Env {
   DB: D1Database;
   MAIL: R2Bucket;
-  SETUP_TOKEN: string;
+  SETUP_TOKEN?: string;
+  SETUP_ENABLED?: string;
   CLOUDFLARE_EMAIL_ROUTING_TOKEN: string;
   CLOUDFLARE_ZONE_ID: string;
   EMAIL_WORKER_NAME: string;
   INBOX_DOMAIN: string;
   FIREBASE_PROJECT_ID: string;
   TURNSTILE_SECRET_KEY: string;
+  TURNSTILE_ALLOWED_HOSTNAMES?: string;
+  ALLOWED_CORS_ORIGINS?: string;
+  ENVIRONMENT?: string;
 }
 
 export type AuthContext = {

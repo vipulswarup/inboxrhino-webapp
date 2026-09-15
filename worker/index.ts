@@ -4,6 +4,7 @@ import PostalMime, { type Address } from 'postal-mime';
 import { apiAuth } from './auth';
 import { consoleApp } from './console';
 import { createEmailRoute, deleteEmailRoute, EmailRoutingError } from './email-routing';
+import { consumeRateLimit } from './rate-limit';
 import type { AttachmentRow, Env, InboxRow, MessageRow, Variables } from './types';
 import {
   cleanPreview,
@@ -12,10 +13,21 @@ import {
   AUDIT_RETENTION_MS,
   FREE_EMAIL_LIMIT,
   FREE_INBOX_LIMIT,
+  EMAIL_BURST_WINDOW_MS,
   generatedPrefix,
   IDEMPOTENCY_MS,
+  INBOX_BURST_LIMIT,
   jsonError,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_COUNT,
+  MAX_CONTENT_TYPE_BYTES,
+  MAX_DECODED_EMAIL_BYTES,
+  MAX_EMAIL_HEADERS,
+  MAX_EMAIL_PART_BYTES,
+  MAX_FILENAME_BYTES,
+  MAX_RAW_EMAIL_BYTES,
   normalizePrefix,
+  ORGANISATION_BURST_LIMIT,
   parseLimit,
   parseRfc3339,
   parseWaitSeconds,
@@ -26,6 +38,7 @@ import {
   sleep,
   timingSafeEqual,
   toIso,
+  utf8Length,
 } from './utils';
 
 export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -36,15 +49,27 @@ app.use('*', async (c, next) => {
   c.header('X-Request-Id', c.get('requestId'));
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('Referrer-Policy', 'no-referrer');
+  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  if (c.req.path === '/setup' || c.req.path.startsWith('/v1/') || c.req.path.startsWith('/console/')) {
+    c.header('Cache-Control', 'private, no-store');
+  }
 });
 
 app.use(
   '*',
   cors({
-    origin: (origin) => {
+    origin: (origin, c) => {
       if (!origin) return '';
-      if (origin === 'https://app.inboxrhino.in' || origin.endsWith('.chatgpt.site')) return origin;
-      if (/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) return origin;
+      const allowedOrigins = new Set(
+        (c.env.ALLOWED_CORS_ORIGINS ?? 'https://app.inboxrhino.in')
+          .split(',')
+          .map((value: string) => value.trim())
+          .filter(Boolean),
+      );
+      if (allowedOrigins.has(origin)) return origin;
+      if ((c.env.ENVIRONMENT === 'development' || c.env.ENVIRONMENT === 'test') && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+        return origin;
+      }
       return '';
     },
     allowHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
@@ -61,6 +86,9 @@ app.onError((error, c) => {
 app.get('/health', (c) => c.json({ status: 'ok', service: 'inboxrhino-api' }));
 
 app.post('/setup', async (c) => {
+  if (c.env.SETUP_ENABLED !== 'true') {
+    return jsonError(c, 404, 'not_found', 'Resource not found.');
+  }
   const token = c.req.header('X-Setup-Token') ?? '';
   if (!c.env.SETUP_TOKEN || !timingSafeEqual(token, c.env.SETUP_TOKEN)) {
     return jsonError(c, 403, 'setup_forbidden', 'Setup token is invalid.');
@@ -592,13 +620,47 @@ function mailbox(address: Address | undefined) {
   return { name: address.name ?? '', address: address.address.toLowerCase() };
 }
 
+class InboundEmailRejected extends Error {}
+
+async function releaseEmailQuota(db: D1Database, organisationId: string, periodStart: string) {
+  await db.prepare('UPDATE usage_counters SET received_count = MAX(0, received_count - 1) WHERE organisation_id = ? AND period_start = ?')
+    .bind(organisationId, periodStart)
+    .run();
+}
+
+async function runWriteTasks(tasks: Array<() => Promise<unknown>>, concurrency = 4) {
+  for (let offset = 0; offset < tasks.length; offset += concurrency) {
+    await Promise.all(tasks.slice(offset, offset + concurrency).map((task) => task()));
+  }
+}
+
 export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
+  if (!Number.isSafeInteger(message.rawSize) || message.rawSize < 0 || message.rawSize > MAX_RAW_EMAIL_BYTES) {
+    message.setReject('Message exceeds the maximum accepted size');
+    return;
+  }
   const recipient = message.to.trim().toLowerCase();
   const inbox = await env.DB.prepare("SELECT id, organisation_id FROM inboxes WHERE address = ? AND status = 'active'")
     .bind(recipient)
     .first<{ id: string; organisation_id: string }>();
   if (!inbox) {
     message.setReject('Recipient address rejected');
+    return;
+  }
+
+  const inboxBurst = await consumeRateLimit(env.DB, `mail:inbox:${inbox.id}`, INBOX_BURST_LIMIT, EMAIL_BURST_WINDOW_MS);
+  if (!inboxBurst.allowed) {
+    message.setReject('Recipient is temporarily rate limited');
+    return;
+  }
+  const organisationBurst = await consumeRateLimit(
+    env.DB,
+    `mail:organisation:${inbox.organisation_id}`,
+    ORGANISATION_BURST_LIMIT,
+    EMAIL_BURST_WINDOW_MS,
+  );
+  if (!organisationBurst.allowed) {
+    message.setReject('Recipient organisation is temporarily rate limited');
     return;
   }
 
@@ -622,16 +684,29 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
     const sender = mailbox(parsed.from);
     const text = parsed.text ?? '';
     const html = parsed.html ?? '';
+    if (parsed.headers.length > MAX_EMAIL_HEADERS) throw new InboundEmailRejected('Message has too many headers');
+    if (utf8Length(text) > MAX_EMAIL_PART_BYTES || utf8Length(html) > MAX_EMAIL_PART_BYTES) {
+      throw new InboundEmailRejected('Message text or HTML exceeds the maximum accepted size');
+    }
+    if (parsed.attachments.length > MAX_ATTACHMENT_COUNT) throw new InboundEmailRejected('Message has too many attachments');
     const textObjectKey = text ? `messages/${inbox.organisation_id}/${messageId}/text.txt` : null;
     const htmlObjectKey = html ? `messages/${inbox.organisation_id}/${messageId}/html.html` : null;
+    let decodedBytes = utf8Length(text) + utf8Length(html);
     const attachmentRows: Array<AttachmentRow & { bytes: Uint8Array }> = parsed.attachments.map((attachment, index) => {
       const bytes = contentBytes(attachment.content);
       const id = randomId('att');
+      const filename = attachment.filename || `attachment-${index + 1}`;
+      const contentType = attachment.mimeType || 'application/octet-stream';
+      if (bytes.byteLength > MAX_ATTACHMENT_BYTES) throw new InboundEmailRejected('Attachment exceeds the maximum accepted size');
+      if (utf8Length(filename) > MAX_FILENAME_BYTES) throw new InboundEmailRejected('Attachment filename is too long');
+      if (utf8Length(contentType) > MAX_CONTENT_TYPE_BYTES) throw new InboundEmailRejected('Attachment content type is too long');
+      decodedBytes += bytes.byteLength;
+      if (decodedBytes > MAX_DECODED_EMAIL_BYTES) throw new InboundEmailRejected('Decoded message exceeds the maximum accepted size');
       return {
         id,
         message_id: messageId,
-        filename: attachment.filename || `attachment-${index + 1}`,
-        content_type: attachment.mimeType || 'application/octet-stream',
+        filename,
+        content_type: contentType,
         size_bytes: bytes.byteLength,
         object_key: `messages/${inbox.organisation_id}/${messageId}/attachments/${id}`,
         disposition: attachment.disposition === 'inline' ? 'inline' : 'attachment',
@@ -640,11 +715,11 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
       };
     });
 
-    const writes: Promise<unknown>[] = [];
-    if (textObjectKey) writes.push(env.MAIL.put(textObjectKey, text, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }));
-    if (htmlObjectKey) writes.push(env.MAIL.put(htmlObjectKey, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } }));
+    const writes: Array<() => Promise<unknown>> = [];
+    if (textObjectKey) writes.push(() => env.MAIL.put(textObjectKey, text, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }));
+    if (htmlObjectKey) writes.push(() => env.MAIL.put(htmlObjectKey, html, { httpMetadata: { contentType: 'text/html; charset=utf-8' } }));
     for (const attachment of attachmentRows) {
-      writes.push(env.MAIL.put(attachment.object_key, attachment.bytes, { httpMetadata: { contentType: attachment.content_type } }));
+      writes.push(() => env.MAIL.put(attachment.object_key, attachment.bytes, { httpMetadata: { contentType: attachment.content_type } }));
     }
 
     const statements = [
@@ -690,16 +765,18 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
     }
 
     try {
-      await Promise.all(writes);
+      await runWriteTasks(writes);
       await env.DB.batch(statements);
     } catch (error) {
       await Promise.all([textObjectKey, htmlObjectKey, ...attachmentRows.map((row) => row.object_key)].filter((key): key is string => Boolean(key)).map((key) => env.MAIL.delete(key)));
       throw error;
     }
   } catch (error) {
-    await env.DB.prepare('UPDATE usage_counters SET received_count = MAX(0, received_count - 1) WHERE organisation_id = ? AND period_start = ?')
-      .bind(inbox.organisation_id, period.key)
-      .run();
+    await releaseEmailQuota(env.DB, inbox.organisation_id, period.key);
+    if (error instanceof InboundEmailRejected) {
+      message.setReject(error.message);
+      return;
+    }
     throw error;
   }
 }

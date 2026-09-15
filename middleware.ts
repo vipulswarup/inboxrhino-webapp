@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { APP_ROBOTS_TXT, isAppHost, isCacheablePublicAsset, robotsHeaderValue } from './app/lib/seo';
+import { browserSecurityHeaders } from './app/lib/security-headers';
 
 const CANONICAL_HOST = 'inboxrhino.in';
 const HTTPS_HOSTS = new Set(['inboxrhino.in', 'www.inboxrhino.in', 'app.inboxrhino.in']);
 
 function withOptionalRobots(hostname: string, pathname: string, response: NextResponse) {
+  if (HTTPS_HOSTS.has(hostname)) {
+    for (const [name, value] of Object.entries(browserSecurityHeaders)) response.headers.set(name, value);
+    response.headers.set('Referrer-Policy', isAppHost(hostname) ? 'no-referrer' : 'strict-origin-when-cross-origin');
+  }
   const robots = robotsHeaderValue(hostname, pathname);
   if (robots) response.headers.set('X-Robots-Tag', robots);
   if (isCacheablePublicAsset(pathname)) {
@@ -22,34 +27,32 @@ export function middleware(request: NextRequest) {
     url.hostname = CANONICAL_HOST;
     url.protocol = 'https:';
     url.port = '';
-    return NextResponse.redirect(url, 301);
+    return withOptionalRobots(host, url.pathname, NextResponse.redirect(url, 301));
   }
 
   if (HTTPS_HOSTS.has(host) && proto === 'http') {
     url.protocol = 'https:';
     url.port = '';
-    return NextResponse.redirect(url, 301);
+    return withOptionalRobots(host, url.pathname, NextResponse.redirect(url, 301));
   }
 
-  // Keep /news paths intact so the Stork Wire proxy rewrite can match as-is.
   if (
-    !url.pathname.startsWith('/news') &&
     url.pathname.length > 1 &&
     url.pathname.endsWith('/') &&
     !url.pathname.split('/').pop()?.includes('.')
   ) {
     url.pathname = url.pathname.replace(/\/+$/, '');
-    return NextResponse.redirect(url, 301);
+    return withOptionalRobots(host, url.pathname, NextResponse.redirect(url, 301));
   }
 
   if (isAppHost(host) && url.pathname === '/robots.txt') {
-    return new NextResponse(APP_ROBOTS_TXT, {
+    return withOptionalRobots(host, url.pathname, new NextResponse(APP_ROBOTS_TXT, {
       status: 200,
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'X-Robots-Tag': 'noindex, nofollow',
       },
-    });
+    }));
   }
 
   return withOptionalRobots(host, url.pathname, NextResponse.next());

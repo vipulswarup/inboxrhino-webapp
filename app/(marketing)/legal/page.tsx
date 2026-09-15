@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { CONTACT_EMAIL, SITE_ORIGIN } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
@@ -17,9 +18,9 @@ export default function LegalPage() {
         <h1 className="text-4xl font-bold tracking-[-0.04em]">Privacy and terms</h1>
         <p className="mt-4 text-sm leading-6 text-stone-600">
           These terms apply to the free InboxRhino service at{' '}
-          <a href="/" className="font-bold text-[#0F3D3E]">
+          <Link href="/" className="font-bold text-[#0F3D3E]">
             {SITE_ORIGIN}
-          </a>
+          </Link>
           . Contact{' '}
           <a href={`mailto:${CONTACT_EMAIL}`} className="font-bold text-[#0F3D3E]">
             {CONTACT_EMAIL}
@@ -52,13 +53,13 @@ export default function LegalPage() {
         </p>
         <p>
           The service is provided as-is during the free launch. Paid plans, SLA, and GST invoices are not part of this launch. We may change limits with notice on this site. Company details are on the{' '}
-          <a href="/about" className="font-bold text-[#0F3D3E]">
+          <Link href="/about" className="font-bold text-[#0F3D3E]">
             about page
-          </a>
+          </Link>
           . Quota numbers match{' '}
-          <a href="/pricing" className="font-bold text-[#0F3D3E]">
+          <Link href="/pricing" className="font-bold text-[#0F3D3E]">
             InboxRhino pricing
-          </a>
+          </Link>
           .
         </p>
       </section>

@@ -1,0 +1,5 @@
+Contact: mailto:contact@inboxrhino.in
+Expires: 2027-09-14T23:59:59Z
+Preferred-Languages: en
+Canonical: https://inboxrhino.in/.well-known/security.txt
+Policy: https://inboxrhino.in/legal

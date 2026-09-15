@@ -6,7 +6,7 @@ import { turnstileSiteKey } from './lib/console-api';
 declare global {
   interface Window {
     turnstile?: {
-      render: (element: HTMLElement, options: { sitekey: string; callback: (token: string) => void; 'expired-callback'?: () => void }) => string;
+      render: (element: HTMLElement, options: { sitekey: string; action: string; callback: (token: string) => void; 'expired-callback'?: () => void; 'error-callback'?: () => void }) => string;
       reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
     };
@@ -52,8 +52,10 @@ export function TurnstileWidget({ onToken, onExpire }: TurnstileWidgetProps) {
     if (!ready || !containerRef.current || !window.turnstile) return;
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: turnstileSiteKey,
+      action: 'signup',
       callback: (token) => onTokenRef.current(token),
       'expired-callback': () => onExpireRef.current?.(),
+      'error-callback': () => onExpireRef.current?.(),
     });
     return () => {
       if (widgetIdRef.current && window.turnstile) window.turnstile.remove(widgetIdRef.current);

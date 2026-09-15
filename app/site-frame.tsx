@@ -1,4 +1,6 @@
 import { headers } from 'next/headers';
+import Image from 'next/image';
+import Link from 'next/link';
 import { LogoWordmark } from './brand-logo';
 import { JsonLd } from './json-ld';
 import { siteGraphJsonLd } from './lib/seo';
@@ -17,14 +19,14 @@ export async function SiteHeader() {
   return (
     <header className="border-b border-[#1C1917]/10 bg-[#F7F4EF]">
       <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
-        <a href="/" aria-label="InboxRhino home">
+        <Link href="/" aria-label="InboxRhino home">
           <LogoWordmark />
-        </a>
+        </Link>
         <nav className="flex items-center gap-2 text-sm sm:gap-4">
           {nav.map((item) => (
-            <a key={item.href} href={item.href} className="hidden px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E] sm:inline">
+            <Link key={item.href} href={item.href} className="hidden px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E] sm:inline">
               {item.label}
-            </a>
+            </Link>
           ))}
           <a href={loginHref} title="Sign in to the InboxRhino console" className="px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E]">
             Console sign in
@@ -48,69 +50,69 @@ export function SiteFooter() {
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Product</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
-              <a href="/" className={linkClass}>
+              <Link href="/" className={linkClass}>
                 InboxRhino home
-              </a>
-              <a href="/pricing" className={linkClass}>
+              </Link>
+              <Link href="/pricing" className={linkClass}>
                 Pricing and quotas
-              </a>
+              </Link>
             </nav>
           </div>
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Developers</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
-              <a href="/docs" className={linkClass}>
+              <Link href="/docs" className={linkClass}>
                 Documentation
-              </a>
-              <a href="/docs/quickstart" className={linkClass}>
+              </Link>
+              <Link href="/docs/quickstart" className={linkClass}>
                 API quickstart
-              </a>
-              <a href="/docs/api" className={linkClass}>
+              </Link>
+              <Link href="/docs/api" className={linkClass}>
                 API reference
-              </a>
-              <a href="/docs/playwright" className={linkClass}>
+              </Link>
+              <Link href="/docs/playwright" className={linkClass}>
                 Playwright email testing
-              </a>
+              </Link>
             </nav>
           </div>
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Resources</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
-              <a href="/blog" className={linkClass}>
+              <Link href="/blog" className={linkClass}>
                 InboxRhino blog
-              </a>
-              <a href="/news" className={linkClass}>
+              </Link>
+              <Link href="/news" className={linkClass}>
                 News
-              </a>
-              <a href="/compare/tigrmail" className={linkClass}>
+              </Link>
+              <Link href="/compare/tigrmail" className={linkClass}>
                 InboxRhino vs Tigrmail
-              </a>
-              <a href="/compare/mailosaur" className={linkClass}>
+              </Link>
+              <Link href="/compare/mailosaur" className={linkClass}>
                 Mailosaur alternative
-              </a>
-              <a href="/compare/mailhog" className={linkClass}>
+              </Link>
+              <Link href="/compare/mailhog" className={linkClass}>
                 MailHog alternative
-              </a>
-              <a href="/compare/mailslurp" className={linkClass}>
+              </Link>
+              <Link href="/compare/mailslurp" className={linkClass}>
                 InboxRhino vs MailSlurp
-              </a>
-              <a href="/compare/testmail" className={linkClass}>
+              </Link>
+              <Link href="/compare/testmail" className={linkClass}>
                 InboxRhino vs testmail.app
-              </a>
-              <a href="/india" className={linkClass}>
+              </Link>
+              <Link href="/india" className={linkClass}>
                 INR billing and GST
-              </a>
+              </Link>
             </nav>
           </div>
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">Legal</p>
             <nav className="flex flex-col gap-2 text-sm font-semibold">
-              <a href="/about" className={linkClass}>
+              <Link href="/about" className={linkClass}>
                 About
-              </a>
-              <a href="/legal" className={linkClass}>
+              </Link>
+              <Link href="/legal" className={linkClass}>
                 Privacy and terms
-              </a>
+              </Link>
               <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
                 {CONTACT_EMAIL}
               </a>
@@ -118,7 +120,7 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="mt-8">
-          <a href="https://www.stork.ai/" rel="nofollow" title="Stork Verified — stork.ai AI tools directory"><img src="https://www.stork.ai/badge/verified-dark.svg" alt="Stork Verified — stork.ai AI tools directory" width="216" height="44" /></a>
+          <a href="https://www.stork.ai/" rel="nofollow" title="Stork Verified — stork.ai AI tools directory"><Image src="https://www.stork.ai/badge/verified-dark.svg" alt="Stork Verified — stork.ai AI tools directory" width={216} height={44} unoptimized /></a>
         </div>
       </div>
     </footer>

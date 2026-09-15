@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import Link from 'next/link';
 import { CodeSnippet } from './code-snippet';
 import { JsonLd } from './json-ld';
 import { getAllPosts } from './lib/blog';
@@ -128,16 +129,16 @@ export async function MarketingHome() {
           <li className="rounded-[22px] border border-[#1C1917]/10 bg-white p-5">
             {latestPost ? (
               <>
-                <a href={`/blog/${latestPost.slug}`} className="font-bold text-[#0F3D3E] hover:underline">
+                <Link href={`/blog/${latestPost.slug}`} className="font-bold text-[#0F3D3E] hover:underline">
                   {latestPost.title}
-                </a>
+                </Link>
                 <p className="mt-2 text-sm leading-6 text-stone-600">{latestPost.description}</p>
               </>
             ) : (
               <>
-                <a href="/blog" className="font-bold text-[#0F3D3E] hover:underline">
+                <Link href="/blog" className="font-bold text-[#0F3D3E] hover:underline">
                   InboxRhino blog
-                </a>
+                </Link>
                 <p className="mt-2 text-sm leading-6 text-stone-600">Notes on agentic testing and email verification in CI.</p>
               </>
             )}
