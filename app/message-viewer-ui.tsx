@@ -21,7 +21,7 @@ export type MessageViewerUIProps = {
   isLive: boolean;
   displayMessages: Message[];
   activeInbox: ApiInbox;
-  usage: { received: number; limit: number; inboxes?: number; inboxLimit?: number };
+  usage: { plan?: string; received: number; limit: number; inboxes?: number; inboxLimit?: number };
   panel: Panel;
   activeMessage?: Message;
   activeTab: Tab;
@@ -46,7 +46,13 @@ export type MessageViewerUIProps = {
   onPanelChange?: (panel: Panel) => void;
   onDeleteInbox?: () => void;
   onCopyAddress?: () => void;
+  onRedeemStarter?: (event: FormEvent<HTMLFormElement>) => void;
+  redeemBusy?: boolean;
   onCreateInbox?: (event: FormEvent<HTMLFormElement>) => void;
+  hasMoreInboxes?: boolean;
+  hasMoreMessages?: boolean;
+  onLoadMoreInboxes?: () => void;
+  onLoadMoreMessages?: () => void;
   onSelectInbox?: (inboxId: string) => void;
   onRefresh?: () => void;
   onSelectMessage?: (id: string) => void;
@@ -182,6 +188,7 @@ export function MessageViewerUI(props: MessageViewerUIProps) {
                         {inbox.local_part}
                       </button>
                     ))}
+                    {props.hasMoreInboxes ? <button type="button" onClick={props.onLoadMoreInboxes} className="w-full rounded-lg border border-stone-300 px-2 py-2 text-xs font-bold">Load more inboxes</button> : null}
                   </div>
                 ) : null}
               </div>
@@ -207,6 +214,7 @@ export function MessageViewerUI(props: MessageViewerUIProps) {
                     </div>
                   );
                 })}
+                {props.hasMoreMessages ? <button type="button" onClick={props.onLoadMoreMessages} className="w-full rounded-lg border border-stone-300 px-2 py-2 text-xs font-bold">Load more messages</button> : null}
               </div>
             </section>
           ) : (
@@ -214,8 +222,17 @@ export function MessageViewerUI(props: MessageViewerUIProps) {
               {props.panel === 'usage' ? (
                 <div className="space-y-4 text-sm">
                   <h2 className="text-lg font-bold">Usage</h2>
+                  {props.isLive ? <p>Plan: <strong className="capitalize">{props.usage.plan ?? 'Free'}</strong></p> : null}
                   <p>Emails: {props.usage.received} / {props.usage.limit}</p>
                   <p>Inboxes: {props.usage.inboxes ?? 0} / {props.usage.inboxLimit ?? 11}</p>
+                  {props.onRedeemStarter ? (
+                    <form onSubmit={props.onRedeemStarter} className="max-w-sm space-y-2 rounded-xl border border-stone-200 bg-white p-4">
+                      <p className="font-bold">Activate Starter with an access code</p>
+                      <p className="text-xs text-stone-600">Starter access is complimentary. No payment or recurring charge will be made.</p>
+                      <input aria-label="Starter access code" name="code" type="password" required autoComplete="off" className="w-full rounded-lg border border-stone-300 px-3 py-2" />
+                      <button type="submit" disabled={props.redeemBusy} className="rounded-lg bg-[var(--brand-teal)] px-4 py-2 font-bold text-white disabled:opacity-60">{props.redeemBusy ? 'Activating…' : 'Activate Starter'}</button>
+                    </form>
+                  ) : null}
                 </div>
               ) : (
                 <div className="space-y-4 text-sm">

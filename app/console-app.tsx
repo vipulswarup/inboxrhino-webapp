@@ -55,6 +55,7 @@ export function ConsoleApp() {
   const [apiKeys, setApiKeys] = useState<ApiKeySummary[]>([]);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [redeemBusy, setRedeemBusy] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const { activeInbox } = mailbox;
   const messages = mailbox.messages.map((message) => mapApiMessage(message, mailbox.detail?.id === message.id ? mailbox.detail : undefined));
@@ -157,6 +158,21 @@ export function ConsoleApp() {
     }
   };
 
+  const redeemStarter = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const code = String(new FormData(form).get('code') ?? '').trim();
+    setRedeemBusy(true);
+    setError('');
+    try {
+      const token = await auth.getSensitiveActionToken();
+      await consoleFetch<{ plan: string }>('/console/redeem-starter', token, { method: 'POST', body: JSON.stringify({ code }) });
+      form.reset();
+      await Promise.all([loadUsage(), auth.refreshSession()]);
+    } catch (caught) { reportError(caught); }
+    finally { setRedeemBusy(false); }
+  };
+
   const initials = auth.session?.user.email.slice(0, 2).toUpperCase() ?? 'IR';
 
   return (
@@ -168,7 +184,7 @@ export function ConsoleApp() {
           ? { id: activeInbox.id, address: activeInbox.address, local_part: activeInbox.local_part }
           : { id: 'none', address: 'Create an inbox to begin', local_part: 'empty' }
       }
-      usage={usage ? { received: usage.emails.received, limit: usage.emails.limit, inboxes: usage.inboxes.active, inboxLimit: usage.inboxes.limit } : undefined}
+      usage={usage ? { plan: usage.plan, received: usage.emails.received, limit: usage.emails.limit, inboxes: usage.inboxes.active, inboxLimit: usage.inboxes.limit } : undefined}
       verified={auth.session?.user.email_verified ?? false}
       panel={panel}
       onPanelChange={setPanel}
@@ -188,6 +204,8 @@ export function ConsoleApp() {
       onAccountToggle={() => setAccountOpen((open) => !open)}
       onSignOut={() => void auth.signOutUser()}
       onResendVerification={() => runAction(auth.resendVerification)}
+      onRedeemStarter={isOwner && verified && usage?.plan === 'free' ? redeemStarter : undefined}
+      redeemBusy={redeemBusy}
       onCreateInbox={createInbox}
       onDeleteInbox={() => activeInbox && runAction(() => deleteInbox(activeInbox.id))}
       onDeleteMessage={(messageId) => runAction(() => deleteMessage(messageId))}
@@ -196,6 +214,10 @@ export function ConsoleApp() {
       newApiKey={newApiKey}
       onCreateApiKey={isOwner ? createApiKey : undefined}
       onRevokeApiKey={(keyId) => void revokeApiKey(keyId)}
+      hasMoreInboxes={mailbox.hasMoreInboxes}
+      hasMoreMessages={mailbox.hasMoreMessages}
+      onLoadMoreInboxes={() => runAction(mailbox.loadMoreInboxes)}
+      onLoadMoreMessages={() => runAction(mailbox.loadMoreMessages)}
       onSelectInbox={mailbox.selectInbox}
       inboxes={mailbox.inboxes}
     />

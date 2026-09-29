@@ -8,8 +8,9 @@ import type { AttachmentRow, Env, InboxRow, MessageRow, Variables } from './type
 import {
   AUDIT_RETENTION_MS,
   currentPeriod,
-  FREE_EMAIL_LIMIT,
-  FREE_INBOX_LIMIT,
+  organisationPlan,
+  planLimits,
+  timingSafeEqual,
   generatedPrefix,
   jsonError,
   normalizePrefix,
@@ -330,25 +331,51 @@ consoleApp.delete('/api-keys/:id', async (c) => {
   return c.body(null, 204);
 });
 
+consoleApp.post('/redeem-starter', async (c) => {
+  const denied = requireVerifiedEmail(c) ?? requireOwner(c) ?? requireRecentAuth(c);
+  if (denied) return denied;
+  const { organisationId, userId } = c.get('consoleAuth');
+  const rate = await consumeRateLimit(c.env.DB, `redeem:org:${organisationId}`, 5, 60 * 60 * 1000);
+  if (!rate.allowed) {
+    c.header('Retry-After', String(rate.retryAfterSeconds));
+    return jsonError(c, 429, 'redemption_rate_limited', 'Too many attempts. Try again later.');
+  }
+  let body: { code?: unknown };
+  try { body = await c.req.json(); } catch { return jsonError(c, 422, 'invalid_json', 'Request body must be valid JSON.'); }
+  const code = typeof body.code === 'string' ? body.code.trim() : '';
+  if (!code || code.length > 256) return jsonError(c, 422, 'invalid_code', 'Enter a valid access code.');
+  if (!c.env.STARTER_ACCESS_CODE_HASH) return jsonError(c, 503, 'redemption_unavailable', 'Access codes are not configured.');
+  const valid = timingSafeEqual(await sha256(code), c.env.STARTER_ACCESS_CODE_HASH);
+  if (!valid) return jsonError(c, 403, 'invalid_code', 'Access code is invalid.');
+  const updated = await c.env.DB.prepare("UPDATE organisations SET plan = 'starter' WHERE id = ? AND plan = 'free'").bind(organisationId).run();
+  if ((updated.meta.changes ?? 0) === 0) return jsonError(c, 409, 'already_upgraded', 'This organisation is already on Starter.');
+  const now = Date.now();
+  await c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(randomId('audit'), organisationId, userId, 'plan.starter_redeemed', organisationId, c.get('requestId'), now, now + AUDIT_RETENTION_MS).run();
+  return c.json({ plan: 'starter' });
+});
+
 consoleApp.get('/usage', async (c) => {
   const denied = requireVerifiedEmail(c);
   if (denied) return denied;
 
   const { organisationId } = c.get('consoleAuth');
   const period = currentPeriod();
-  const [inboxes, usage] = await Promise.all([
+  const [inboxes, usage, plan] = await Promise.all([
     c.env.DB.prepare("SELECT COUNT(*) AS count FROM inboxes WHERE organisation_id = ? AND status = 'active'").bind(organisationId).first<{ count: number }>(),
     c.env.DB.prepare('SELECT received_count FROM usage_counters WHERE organisation_id = ? AND period_start = ?')
       .bind(organisationId, period.key)
       .first<{ received_count: number }>(),
+    organisationPlan(c.env.DB, organisationId),
   ]);
   const active = inboxes?.count ?? 0;
   const received = usage?.received_count ?? 0;
+  const limits = planLimits(plan);
   return c.json({
-    plan: 'free',
+    plan,
     period: { starts_at: period.startsAt.toISOString(), ends_at: period.endsAt.toISOString() },
-    inboxes: { active, limit: FREE_INBOX_LIMIT, remaining: Math.max(0, FREE_INBOX_LIMIT - active) },
-    emails: { received, limit: FREE_EMAIL_LIMIT, remaining: Math.max(0, FREE_EMAIL_LIMIT - received) },
+    inboxes: { active, limit: limits.inboxes, remaining: Math.max(0, limits.inboxes - active) },
+    emails: { received, limit: limits.emails, remaining: Math.max(0, limits.emails - received) },
   });
 });
 
@@ -359,13 +386,15 @@ consoleApp.get('/inboxes', async (c) => {
   const parsedLimit = parseLimit(c.req.query('limit'));
   if ('error' in parsedLimit) return jsonError(c, 422, 'invalid_limit', parsedLimit.error);
   const limit = parsedLimit.value;
+  const offset = Number(c.req.query('offset') ?? '0');
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000) return jsonError(c, 422, 'invalid_offset', 'offset must be an integer between 0 and 10000.');
   const { organisationId } = c.get('consoleAuth');
   const result = await c.env.DB.prepare(
-    "SELECT * FROM inboxes WHERE organisation_id = ? AND status = 'active' ORDER BY created_at DESC, id DESC LIMIT ?",
+    "SELECT * FROM inboxes WHERE organisation_id = ? AND status = 'active' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
   )
-    .bind(organisationId, limit)
+    .bind(organisationId, limit + 1, offset)
     .all<InboxRow>();
-  return c.json({ data: result.results.map(inboxJson) });
+  return c.json({ data: result.results.slice(0, limit).map(inboxJson), next_offset: result.results.length > limit ? offset + limit : null });
 });
 
 consoleApp.post('/inboxes', async (c) => {
@@ -416,7 +445,7 @@ consoleApp.post('/inboxes', async (c) => {
          SELECT ?, ?, 'dom_test', ?, ?, NULL, 'provisioning', ?
          WHERE (SELECT COUNT(*) FROM inboxes WHERE organisation_id = ? AND status IN ('active', 'provisioning')) < ?`,
       )
-        .bind(row.id, organisationId, localPart, address, now, organisationId, FREE_INBOX_LIMIT)
+        .bind(row.id, organisationId, localPart, address, now, organisationId, planLimits(await organisationPlan(c.env.DB, organisationId)).inboxes)
         .run();
       if ((result.meta.changes ?? 0) === 0) return jsonError(c, 409, 'inbox_quota_exceeded', 'Active inbox quota exceeded.');
       reserved = true;
@@ -513,12 +542,14 @@ consoleApp.get('/inboxes/:id/messages', async (c) => {
 
   const parsedLimit = parseLimit(c.req.query('limit'));
   if ('error' in parsedLimit) return jsonError(c, 422, 'invalid_limit', parsedLimit.error);
+  const offset = Number(c.req.query('offset') ?? '0');
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000) return jsonError(c, 422, 'invalid_offset', 'offset must be an integer between 0 and 10000.');
   const result = await c.env.DB.prepare(
-    'SELECT * FROM messages WHERE organisation_id = ? AND inbox_id = ? ORDER BY received_at DESC, id DESC LIMIT ?',
+    'SELECT * FROM messages WHERE organisation_id = ? AND inbox_id = ? ORDER BY received_at DESC, id DESC LIMIT ? OFFSET ?',
   )
-    .bind(organisationId, inboxId, parsedLimit.value)
+    .bind(organisationId, inboxId, parsedLimit.value + 1, offset)
     .all<MessageRow>();
-  return c.json({ data: result.results.map(messageSummary) });
+  return c.json({ data: result.results.slice(0, parsedLimit.value).map(messageSummary), next_offset: result.results.length > parsedLimit.value ? offset + parsedLimit.value : null });
 });
 
 consoleApp.get('/messages/:id', async (c) => {

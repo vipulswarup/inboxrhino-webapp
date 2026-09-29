@@ -135,6 +135,10 @@ curl --fail https://api.inboxrhino.in/health
 
 Then run the Postman lifecycle with a non-production test inbox: usage, create, receive, wait, retrieve, delete message, and delete inbox.
 
+### Starter access codes
+
+Starter grants 1,100 active inboxes and 3,300 inbound emails per UTC month. An organisation owner with a verified email can enter a code on the console Usage tab. No payment details are collected. The Worker compares the SHA-256 hash of the submitted code with its `STARTER_ACCESS_CODE_HASH` secret. Store only the hash in Cloudflare; keep the plaintext code outside the repository. Redeeming changes the organisation plan and writes an audit event. Only one shared code is currently supported.
+
 ## Operational notes
 
 - The scheduled cleanup runs daily at `02:17 UTC` and drains all complete 500-message batches before pruning expired idempotency, rate-limit, long-poll, audit, and quarantine records.
@@ -151,7 +155,7 @@ Then run the Postman lifecycle with a non-production test inbox: usage, create, 
 - Email content loads only for the selected summary. A failed detail request does not hide the message list; Retry email retrieves it again.
 - Empty live mailboxes never display demo content. Plain-text-only email renders directly, and every attachment has its own authenticated download.
 - Email verification can be refreshed with “I’ve verified my email”.
-- The free tier permits 33 received emails per month, so the console's 100-message fetch covers all messages within the 30-day retention window, including across a month boundary. Paid tiers will need cursor pagination.
+- The console loads inboxes and messages in pages of 100. Use Load more to reach older items on Starter.
 
 ### API and console ownership
 

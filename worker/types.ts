@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   MAIL: R2Bucket;
   SETUP_TOKEN?: string;
+  STARTER_ACCESS_CODE_HASH?: string;
   SETUP_ENABLED?: string;
   CLOUDFLARE_EMAIL_ROUTING_TOKEN: string;
   CLOUDFLARE_ZONE_ID: string;

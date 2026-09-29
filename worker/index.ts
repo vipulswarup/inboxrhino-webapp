@@ -11,8 +11,8 @@ import {
   contentBytes,
   currentPeriod,
   AUDIT_RETENTION_MS,
-  FREE_EMAIL_LIMIT,
-  FREE_INBOX_LIMIT,
+  organisationPlan,
+  planLimits,
   EMAIL_BURST_WINDOW_MS,
   generatedPrefix,
   IDEMPOTENCY_MS,
@@ -258,7 +258,7 @@ app.post('/v1/inboxes', async (c) => {
          SELECT ?, ?, 'dom_test', ?, ?, NULL, 'provisioning', ?
          WHERE (SELECT COUNT(*) FROM inboxes WHERE organisation_id = ? AND status IN ('active', 'provisioning')) < ?`,
       )
-        .bind(row.id, organisationId, localPart, address, now, organisationId, FREE_INBOX_LIMIT)
+        .bind(row.id, organisationId, localPart, address, now, organisationId, planLimits(await organisationPlan(c.env.DB, organisationId)).inboxes)
         .run();
       if ((result.meta.changes ?? 0) === 0) {
         await releaseIdempotency();
@@ -599,19 +599,21 @@ app.get('/v1/attachments/:id', async (c) => {
 app.get('/v1/usage', async (c) => {
   const { organisationId } = c.get('auth');
   const period = currentPeriod();
-  const [inboxes, usage] = await Promise.all([
+  const [inboxes, usage, plan] = await Promise.all([
     c.env.DB.prepare("SELECT COUNT(*) AS count FROM inboxes WHERE organisation_id = ? AND status = 'active'").bind(organisationId).first<{ count: number }>(),
     c.env.DB.prepare('SELECT received_count FROM usage_counters WHERE organisation_id = ? AND period_start = ?')
       .bind(organisationId, period.key)
       .first<{ received_count: number }>(),
+    organisationPlan(c.env.DB, organisationId),
   ]);
   const active = inboxes?.count ?? 0;
   const received = usage?.received_count ?? 0;
+  const limits = planLimits(plan);
   return c.json({
-    plan: 'free',
+    plan,
     period: { starts_at: period.startsAt.toISOString(), ends_at: period.endsAt.toISOString() },
-    inboxes: { active, limit: FREE_INBOX_LIMIT, remaining: Math.max(0, FREE_INBOX_LIMIT - active) },
-    emails: { received, limit: FREE_EMAIL_LIMIT, remaining: Math.max(0, FREE_EMAIL_LIMIT - received) },
+    inboxes: { active, limit: limits.inboxes, remaining: Math.max(0, limits.inboxes - active) },
+    emails: { received, limit: limits.emails, remaining: Math.max(0, limits.emails - received) },
   });
 });
 
@@ -670,7 +672,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
      ON CONFLICT(organisation_id, period_start) DO UPDATE SET received_count = received_count + 1
      WHERE received_count < ?`,
   )
-    .bind(inbox.organisation_id, period.key, FREE_EMAIL_LIMIT)
+    .bind(inbox.organisation_id, period.key, planLimits(await organisationPlan(env.DB, inbox.organisation_id)).emails)
     .run();
   if ((reservation.meta.changes ?? 0) === 0) {
     message.setReject('Monthly recipient quota exceeded');

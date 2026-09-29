@@ -32,7 +32,7 @@ export const organisationMembers = sqliteTable(
 export const organisations = sqliteTable('organisations', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  plan: text('plan', { enum: ['free'] }).notNull().default('free'),
+  plan: text('plan', { enum: ['free', 'starter'] }).notNull().default('free'),
   signupCountry: text('signup_country'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });

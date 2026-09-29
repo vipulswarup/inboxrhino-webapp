@@ -32,7 +32,7 @@ export const homeFaqs = [
   },
   {
     q: 'When can I pay in INR?',
-    a: 'Paid Starter, Growth, and Scale plans are designed with INR prices and GST. Checkout is coming soon. The free tier is live now.',
+    a: 'Starter is available at no charge with an access code. Paid checkout is coming soon; Growth and Scale are still planned.',
   },
 ] as const;
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-JWMSV0FTTY';
@@ -93,8 +93,8 @@ export const plans = [
     annual: '₹2,149',
     inboxes: 1100,
     emails: 3300,
-    users: 3,
-    live: false,
+    users: 1,
+    live: true,
   },
   {
     name: 'Growth',

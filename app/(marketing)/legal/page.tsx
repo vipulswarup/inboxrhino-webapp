@@ -49,10 +49,10 @@ export default function LegalPage() {
           InboxRhino is a receive-only testing service. You may not use it as a public disposable-mail website, to send mail, or to abuse third-party services. Test inboxes cannot send, reply, or forward.
         </p>
         <p>
-          The free tier allows 11 active inboxes, 33 inbound emails per UTC calendar month, and one organisation user. When the monthly email quota is exhausted, further inbound mail is rejected. We may suspend accounts that exhaust resources or violate these terms.
+          Free allows 11 active inboxes and 33 inbound emails per UTC calendar month. Code activated Starter allows 1,100 active inboxes and 3,300 inbound emails per UTC calendar month. Both currently allow one organisation user. When the monthly email quota is exhausted, further inbound mail is rejected. We may suspend accounts that exhaust resources or violate these terms.
         </p>
         <p>
-          The service is provided as-is during the free launch. Paid plans, SLA, and GST invoices are not part of this launch. We may change limits with notice on this site. Company details are on the{' '}
+          The service is provided as-is during this early launch. Starter access codes are complimentary and create no payment obligation. Paid checkout, SLA, and GST invoices are not part of this launch. We may change limits with notice on this site. Company details are on the{' '}
           <Link href="/about" className="font-bold text-[#0F3D3E]">
             about page
           </Link>

@@ -77,7 +77,7 @@ export async function MarketingHome() {
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold tracking-[-0.03em]">Pricing</h2>
-              <p className="mt-2 text-sm text-stone-600">Free is live. Paid INR plans are listed and marked coming soon. GST extra.</p>
+              <p className="mt-2 text-sm text-stone-600">Free is live. Starter is available with an access code. Paid checkout is coming soon.</p>
             </div>
             <a href="/pricing" className="text-sm font-bold text-[#0F3D3E]">
               InboxRhino pricing and quotas

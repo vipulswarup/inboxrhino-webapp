@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { consoleFetch, type ApiInbox, type ApiMessage, type ApiMessageSummary } from './lib/console-api';
 
 export const MAIL_REFRESH_MS = 5000;
@@ -20,6 +20,10 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
   const [listError, setListError] = useState('');
   const [detailError, setDetailError] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [nextInboxOffset, setNextInboxOffset] = useState<number | null>(null);
+  const [nextMessageOffset, setNextMessageOffset] = useState<number | null>(null);
+  const expandedInboxes = useRef(false);
+  const expandedMessages = useRef(false);
   const activeInbox = inboxes.find((inbox) => inbox.id === inboxId) ?? inboxes[0] ?? null;
   const activeInboxId = activeInbox?.id;
   const messages = activeInboxId && list?.inboxId === activeInboxId ? list.data : [];
@@ -47,9 +51,10 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
       setInboxesLoading(true);
       try {
         const token = await getToken();
-        const payload = await consoleFetch<{ data: ApiInbox[] }>('/console/inboxes?limit=100', token, { signal: controller.signal });
+        const payload = await consoleFetch<{ data: ApiInbox[]; next_offset: number | null }>('/console/inboxes?limit=100', token, { signal: controller.signal });
         if (controller.signal.aborted) return;
-        setInboxes(payload.data);
+        setInboxes((previous) => !expandedInboxes.current ? payload.data : [...payload.data, ...previous.filter((item) => !payload.data.some((fresh) => fresh.id === item.id))]);
+        if (!expandedInboxes.current) setNextInboxOffset(payload.next_offset);
         setInboxError('');
       } catch (error) {
         if (!controller.signal.aborted) setInboxError(error instanceof Error ? error.message : 'Mailboxes could not be loaded.');
@@ -68,9 +73,12 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
       setMessagesLoading(true);
       try {
         const token = await getToken();
-        const payload = await consoleFetch<{ data: ApiMessageSummary[] }>(`/console/inboxes/${activeInboxId}/messages?limit=100`, token, { signal: controller.signal });
+        const payload = await consoleFetch<{ data: ApiMessageSummary[]; next_offset: number | null }>(`/console/inboxes/${activeInboxId}/messages?limit=100`, token, { signal: controller.signal });
         if (controller.signal.aborted) return;
-        setList({ inboxId: activeInboxId, data: payload.data });
+        setList((previous) => previous?.inboxId === activeInboxId && expandedMessages.current
+          ? { inboxId: activeInboxId, data: [...payload.data, ...previous.data.filter((item) => !payload.data.some((fresh) => fresh.id === item.id))] }
+          : { inboxId: activeInboxId, data: payload.data });
+        if (!expandedMessages.current) setNextMessageOffset(payload.next_offset);
         setListError('');
         setLastUpdated(new Date());
       } catch (error) {
@@ -100,7 +108,25 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
     return () => controller.abort();
   }, [enabled, getToken, selectedMessageId, retryKey]);
 
-  const selectInbox = (id: string) => { setInboxId(id); setMessageId(null); };
+  const loadMoreInboxes = async () => {
+    if (nextInboxOffset === null) return;
+    expandedInboxes.current = true;
+    const token = await getToken();
+    const payload = await consoleFetch<{ data: ApiInbox[]; next_offset: number | null }>(`/console/inboxes?limit=100&offset=${nextInboxOffset}`, token);
+    setInboxes((previous) => [...previous, ...payload.data.filter((item) => !previous.some((existing) => existing.id === item.id))]);
+    setNextInboxOffset(payload.next_offset);
+  };
+  const loadMoreMessages = async () => {
+    if (nextMessageOffset === null || !activeInboxId) return;
+    expandedMessages.current = true;
+    const token = await getToken();
+    const inboxId = activeInboxId;
+    const payload = await consoleFetch<{ data: ApiMessageSummary[]; next_offset: number | null }>(`/console/inboxes/${inboxId}/messages?limit=100&offset=${nextMessageOffset}`, token);
+    setList((previous) => previous?.inboxId === inboxId ? { inboxId, data: [...previous.data, ...payload.data.filter((item) => !previous.data.some((existing) => existing.id === item.id))] } : previous);
+    setNextMessageOffset(payload.next_offset);
+  };
+
+  const selectInbox = (id: string) => { setInboxId(id); setMessageId(null); setNextMessageOffset(null); expandedMessages.current = false; };
   const removeMessage = (id: string) => {
     setList((current) => current ? { ...current, data: current.data.filter((message) => message.id !== id) } : null);
     refresh();
@@ -110,6 +136,7 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
 
   return {
     inboxes, activeInbox, messages, selectedMessageId,
+    hasMoreInboxes: nextInboxOffset !== null, hasMoreMessages: nextMessageOffset !== null, loadMoreInboxes, loadMoreMessages,
     detail: detail?.id === selectedMessageId ? detail : null,
     detailError, error: inboxError || listError,
     loading: enabled && inboxesLoading && !inboxes.length,

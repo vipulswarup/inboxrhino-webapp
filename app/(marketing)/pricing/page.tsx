@@ -8,8 +8,8 @@ import { consoleHref } from '@/app/lib/site';
 
 export const metadata: Metadata = pageMeta(
   '/pricing',
-  'InboxRhino pricing — free tier live, INR plans coming soon',
-  'Free InboxRhino includes 11 inboxes and 33 emails per month. Starter, Growth and Scale will checkout in INR with GST extra. Paid checkout is not open yet.',
+  'InboxRhino pricing — Free and Starter access live',
+  'Free InboxRhino includes 11 inboxes and 33 emails per month. Starter is available with an access code; paid checkout is not open.',
 );
 
 export default async function PricingPage() {
@@ -20,7 +20,7 @@ export default async function PricingPage() {
       <PageBreadcrumbs items={[{ name: 'Pricing', path: '/pricing' }]} />
       <h1 className="text-4xl font-bold tracking-[-0.04em]">Pricing</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
-        The free tier is live worldwide. Paid plans will checkout in INR through Razorpay, with GST extra. Annual prices are 10% off 12 months. USD billing is not offered at first launch.
+        Free is available worldwide. Starter can be activated at no charge with an access code in the console. Paid checkout is not available yet.
       </p>
       <div className="mt-10">
         <PricingGrid />
@@ -39,8 +39,8 @@ export default async function PricingPage() {
         <article className="rounded-[22px] border border-[#1C1917]/10 bg-white p-6 text-sm leading-6 text-stone-700">
           <h2 className="text-xl font-bold text-[#1C1917]">Billing status</h2>
           <ul className="mt-4 list-disc space-y-2 pl-5">
-            <li>Free is the only live plan today. There is no overage billing; the API and SMTP reject work that exceeds the free cap.</li>
-            <li>Starter, Growth, and Scale prices are listed so teams can plan. Checkout is not open, so those prices are not a current offer.</li>
+            <li>Free and code activated Starter are live. There is no billing or overage charge; the API and SMTP reject work that exceeds your plan cap.</li>
+            <li>Starter, Growth, and Scale prices are for planning only. Checkout is not open, so no paid subscription is available.</li>
             <li>When paid checkout ships, GST will be added on top of the listed INR amount. See{' '}
               <a href="/india" className="font-bold text-[#0F3D3E]">
                 INR billing and GST invoices
@@ -48,7 +48,7 @@ export default async function PricingPage() {
               .
             </li>
             <li>
-              Upgrade path: stay on free until checkout launches, or email interest volume from the India page. There is no self-serve paid upgrade yet.
+              If you have a Starter access code, sign in and redeem it on the Usage tab. No payment details are required.
             </li>
           </ul>
         </article>

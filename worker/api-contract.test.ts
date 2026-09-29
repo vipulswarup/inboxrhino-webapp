@@ -367,6 +367,39 @@ describe('authenticated console lifecycle', () => {
     vi.mocked(verifyFirebaseIdToken).mockResolvedValue({ sub: 'firebase_console', email: 'owner@example.com', email_verified: verified, auth_time: Math.floor(now / 1000), iat: Math.floor(now / 1000), exp: Math.floor(now / 1000) + 3600, iss: 'test', aud: 'inboxrhino-test' });
   }
 
+  it('paginates console inboxes and messages beyond the free tier', async () => {
+    await consoleUser();
+    const now = Date.now();
+    await env.DB.batch(Array.from({ length: 3 }, (_, index) => env.DB.prepare(
+      'INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).bind(`inbox_page_${index}`, 'org_test', 'dom_test', `page${index}`, `page${index}@test.inboxrhino.in`, 'active', now + index)));
+    const first = await request('/console/inboxes?limit=2', {}, 'firebase-test');
+    await expect(first.json()).resolves.toMatchObject({ data: [{ id: 'inbox_page_2' }, { id: 'inbox_page_1' }], next_offset: 2 });
+    const second = await request('/console/inboxes?limit=2&offset=2', {}, 'firebase-test');
+    await expect(second.json()).resolves.toMatchObject({ data: [{ id: 'inbox_page_0' }], next_offset: null });
+    await seedMessage('msg_page_1', 'org_test', 'inbox_page_0', now);
+    await seedMessage('msg_page_2', 'org_test', 'inbox_page_0', now + 1);
+    const messages = await request('/console/inboxes/inbox_page_0/messages?limit=1', {}, 'firebase-test');
+    await expect(messages.json()).resolves.toMatchObject({ data: [{ id: 'msg_page_2' }], next_offset: 1 });
+  });
+
+  it('redeems Starter only with the configured code and applies its quotas', async () => {
+    await consoleUser();
+    env.STARTER_ACCESS_CODE_HASH = await sha256('test-starter-code');
+    const redeem = (code: string) => request('/console/redeem-starter', { method: 'POST', body: JSON.stringify({ code }) }, 'firebase-test');
+    expect((await redeem('wrong-code')).status).toBe(403);
+    const before = await env.DB.prepare("SELECT plan FROM organisations WHERE id = 'org_test'").first<{ plan: string }>();
+    expect(before?.plan).toBe('free');
+    expect((await redeem('test-starter-code')).status).toBe(200);
+    expect((await redeem('test-starter-code')).status).toBe(409);
+    const usage = await request('/v1/usage');
+    await expect(usage.json()).resolves.toMatchObject({ plan: 'starter', inboxes: { limit: 1100 }, emails: { limit: 3300 } });
+    const consoleUsage = await request('/console/usage', {}, 'firebase-test');
+    await expect(consoleUsage.json()).resolves.toMatchObject({ plan: 'starter', inboxes: { limit: 1100 }, emails: { limit: 3300 } });
+    const created = await request('/v1/inboxes', { method: 'POST', body: JSON.stringify({ prefix: 'starter-inbox' }) });
+    expect(created.status).toBe(201);
+  });
+
   it('rate limits repeated invalid session tokens', async () => {
     vi.mocked(verifyFirebaseIdToken).mockRejectedValue(new Error('invalid_token'));
     const statuses: number[] = [];

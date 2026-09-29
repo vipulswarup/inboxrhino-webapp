@@ -5,6 +5,17 @@ const encoder = new TextEncoder();
 
 export const FREE_INBOX_LIMIT = 11;
 export const FREE_EMAIL_LIMIT = 33;
+export const STARTER_INBOX_LIMIT = 1100;
+export const STARTER_EMAIL_LIMIT = 3300;
+export function planLimits(plan: string) {
+  return plan === 'starter' ? { inboxes: STARTER_INBOX_LIMIT, emails: STARTER_EMAIL_LIMIT } : { inboxes: FREE_INBOX_LIMIT, emails: FREE_EMAIL_LIMIT };
+}
+export async function organisationPlan(db: D1Database, organisationId: string) {
+  const row = await db.prepare('SELECT plan FROM organisations WHERE id = ?').bind(organisationId).first<{ plan: string }>();
+  if (!row) throw new Error('Organisation not found');
+  return row.plan;
+}
+
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 export const AUDIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 export const IDEMPOTENCY_MS = 24 * 60 * 60 * 1000;

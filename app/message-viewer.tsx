@@ -21,7 +21,7 @@ export type MessageViewerProps = {
   displayMessages?: Message[];
   activeInbox?: ApiInbox;
   inboxes?: ApiInbox[];
-  usage?: { received: number; limit: number; inboxes?: number; inboxLimit?: number };
+  usage?: { plan?: string; received: number; limit: number; inboxes?: number; inboxLimit?: number };
   verified?: boolean;
   panel?: Panel;
   onPanelChange?: (panel: Panel) => void;
@@ -31,6 +31,8 @@ export type MessageViewerProps = {
   onAccountToggle?: () => void;
   onSignOut?: () => void;
   onResendVerification?: () => void;
+  onRedeemStarter?: (event: FormEvent<HTMLFormElement>) => void;
+  redeemBusy?: boolean;
   onCreateInbox?: (event: FormEvent<HTMLFormElement>) => void;
   onDeleteInbox?: () => void;
   onDeleteMessage?: (messageId: string) => void;
@@ -39,6 +41,10 @@ export type MessageViewerProps = {
   newApiKey?: string | null;
   onCreateApiKey?: (event: FormEvent<HTMLFormElement>) => void;
   onRevokeApiKey?: (keyId: string) => void;
+  hasMoreInboxes?: boolean;
+  hasMoreMessages?: boolean;
+  onLoadMoreInboxes?: () => void;
+  onLoadMoreMessages?: () => void;
   onSelectInbox?: (inboxId: string) => void;
   embed?: boolean;
 };
@@ -108,7 +114,13 @@ export function MessageViewer(props: MessageViewerProps = {}) {
       onPanelChange={props.onPanelChange}
       onDeleteInbox={props.onDeleteInbox}
       onCopyAddress={copyAddress}
+      onRedeemStarter={props.onRedeemStarter}
+      redeemBusy={props.redeemBusy}
       onCreateInbox={props.onCreateInbox}
+      hasMoreInboxes={props.hasMoreInboxes}
+      hasMoreMessages={props.hasMoreMessages}
+      onLoadMoreInboxes={props.onLoadMoreInboxes}
+      onLoadMoreMessages={props.onLoadMoreMessages}
       onSelectInbox={props.onSelectInbox}
       onRefresh={props.onRefresh}
       onSelectMessage={selectMessage}
