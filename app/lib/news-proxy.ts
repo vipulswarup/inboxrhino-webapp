@@ -1,8 +1,31 @@
+import { AHREFS_ANALYTICS_KEY, GA_MEASUREMENT_ID } from './site';
+
 const STORK_WIRE = new URL('https://www.stork.ai/wire/w1yiv89paodcwwi5u');
 const NEWS_TIMEOUT_MS = 8_000;
 const MAX_NEWS_RESPONSE_BYTES = 3 * 1024 * 1024;
-const REQUEST_HEADER_ALLOWLIST = ['accept', 'accept-language', 'if-modified-since', 'if-none-match'];
-const RESPONSE_HEADER_ALLOWLIST = ['content-type', 'etag', 'last-modified'];
+// The HTML body is instrumented below, so upstream validators would describe
+// different bytes. Edge caching still uses Cache-Control.
+const REQUEST_HEADER_ALLOWLIST = ['accept', 'accept-language'];
+const RESPONSE_HEADER_ALLOWLIST = ['content-type'];
+
+function escapeHtmlAttribute(value: string) {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
+function inlineScriptString(value: string) {
+  return JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
+}
+
+function injectAnalytics(html: string) {
+  const gaId = inlineScriptString(GA_MEASUREMENT_ID);
+  const analytics = `<script async src="https://analytics.ahrefs.com/analytics.js" data-key="${escapeHtmlAttribute(AHREFS_ANALYTICS_KEY)}"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}"></script>
+<script>window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag('js',new Date());window.gtag('config',${gaId});</script>`;
+  return /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, `${analytics}\n</head>`) : `${analytics}\n${html}`;
+}
 
 function newsUrl(request: Request, path: string[]) {
   const target = new URL(STORK_WIRE);
@@ -50,7 +73,17 @@ export async function proxyStorkNews(request: Request, path: string[] = []) {
   }
   const body = await upstream.arrayBuffer();
   if (body.byteLength > MAX_NEWS_RESPONSE_BYTES) return new Response('News response is too large.', { status: 502 });
-  return new Response(body, { status: upstream.status, headers: responseHeaders });
+
+  const contentType = upstream.headers.get('content-type')?.toLowerCase() ?? '';
+  if (!contentType.startsWith('text/html')) {
+    return new Response(body, { status: upstream.status, headers: responseHeaders });
+  }
+
+  const instrumentedBody = new TextEncoder().encode(injectAnalytics(new TextDecoder().decode(body)));
+  if (instrumentedBody.byteLength > MAX_NEWS_RESPONSE_BYTES) {
+    return new Response('News response is too large.', { status: 502 });
+  }
+  return new Response(instrumentedBody, { status: upstream.status, headers: responseHeaders });
 }
 
 export function newsMethodNotAllowed() {

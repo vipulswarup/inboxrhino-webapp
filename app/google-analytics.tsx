@@ -20,6 +20,10 @@ export function GoogleAnalytics() {
   useEffect(() => {
     if (!GA_MEASUREMENT_ID) return;
     if (!isPublicAnalyticsHost(window.location.hostname)) return;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || ((...args: unknown[]) => window.dataLayer?.push(args));
+    window.gtag('js', new Date());
+    window.gtag('config', GA_MEASUREMENT_ID);
     const timer = window.setTimeout(() => setEnabled(true), 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -38,11 +42,6 @@ export function GoogleAnalytics() {
   if (!enabled) return null;
 
   return (
-    <>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
-      <Script id="ga-init" strategy="afterInteractive">
-        {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config','${GA_MEASUREMENT_ID}');`}
-      </Script>
-    </>
+    <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
   );
 }
