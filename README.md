@@ -135,6 +135,12 @@ curl --fail https://api.inboxrhino.in/health
 
 Then run the Postman lifecycle with a non-production test inbox: usage, create, receive, wait, retrieve, delete message, and delete inbox.
 
+### Inbound SMTP TLS policy
+
+`test.inboxrhino.in` receives mail through Cloudflare Email Routing. Its MTA-STS policy is served by the separate `inboxrhino-mta-sts` Worker at `https://mta-sts.test.inboxrhino.in/.well-known/mta-sts.txt`. The policy requires TLS and a valid certificate for Cloudflare's `*.mx.cloudflare.net` MX hosts for senders that support MTA-STS. Deploy it with `npm run deploy:mta-sts`.
+
+The DNS record `_mta-sts.test.inboxrhino.in` must be a DNS-only CNAME to `_mta-sts.mx.cloudflare.net`. Verify the HTTPS policy and certificates before publishing that record. Check all three published MX hosts with STARTTLS after MX changes. MTA-STS does not force legacy senders to use TLS; configure the CI application's sending provider to require TLS as well.
+
 ### Starter access codes
 
 Starter grants 1,100 active inboxes and 3,300 inbound emails per UTC month. An organisation owner with a verified email can enter a code on the console Usage tab. No payment details are collected. The Worker compares the SHA-256 hash of the submitted code with its `STARTER_ACCESS_CODE_HASH` secret. Store only the hash in Cloudflare; keep the plaintext code outside the repository. Redeeming changes the organisation plan and writes an audit event. Only one shared code is currently supported.

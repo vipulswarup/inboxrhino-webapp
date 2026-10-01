@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "inboxrhino-mta-sts",
+  "main": "worker/mta-sts.ts",
+  "compatibility_date": "2026-08-27",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "mta-sts.test.inboxrhino.in", "custom_domain": true }
+  ]
+}

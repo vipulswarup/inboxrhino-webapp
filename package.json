@@ -11,6 +11,7 @@
     "build": "vinext build",
     "build:worker": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --dry-run --config wrangler.backend.jsonc --outdir dist-worker",
     "deploy:worker": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --config wrangler.backend.jsonc --keep-vars",
+    "deploy:mta-sts": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --config wrangler.mta-sts.jsonc",
     "check": "npm run lint && npm run typecheck && npm test && npm run build:worker",
     "release:worker": "npm run check && npm run db:migrate:remote && npm run deploy:worker",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
