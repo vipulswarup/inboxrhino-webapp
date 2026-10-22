@@ -20,8 +20,8 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
   const [listError, setListError] = useState('');
   const [detailError, setDetailError] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [nextInboxOffset, setNextInboxOffset] = useState<number | null>(null);
-  const [nextMessageOffset, setNextMessageOffset] = useState<number | null>(null);
+  const [nextInboxCursor, setNextInboxCursor] = useState<string | null>(null);
+  const [nextMessageCursor, setNextMessageCursor] = useState<string | null>(null);
   const expandedInboxes = useRef(false);
   const expandedMessages = useRef(false);
   const activeInbox = inboxes.find((inbox) => inbox.id === inboxId) ?? inboxes[0] ?? null;
@@ -51,10 +51,10 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
       setInboxesLoading(true);
       try {
         const token = await getToken();
-        const payload = await consoleFetch<{ data: ApiInbox[]; next_offset: number | null }>('/console/inboxes?limit=100', token, { signal: controller.signal });
+        const payload = await consoleFetch<{ data: ApiInbox[]; next_cursor: string | null }>('/console/inboxes?limit=100', token, { signal: controller.signal });
         if (controller.signal.aborted) return;
         setInboxes((previous) => !expandedInboxes.current ? payload.data : [...payload.data, ...previous.filter((item) => !payload.data.some((fresh) => fresh.id === item.id))]);
-        if (!expandedInboxes.current) setNextInboxOffset(payload.next_offset);
+        if (!expandedInboxes.current) setNextInboxCursor(payload.next_cursor);
         setInboxError('');
       } catch (error) {
         if (!controller.signal.aborted) setInboxError(error instanceof Error ? error.message : 'Mailboxes could not be loaded.');
@@ -73,12 +73,12 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
       setMessagesLoading(true);
       try {
         const token = await getToken();
-        const payload = await consoleFetch<{ data: ApiMessageSummary[]; next_offset: number | null }>(`/console/inboxes/${activeInboxId}/messages?limit=100`, token, { signal: controller.signal });
+        const payload = await consoleFetch<{ data: ApiMessageSummary[]; next_cursor: string | null }>(`/console/inboxes/${activeInboxId}/messages?limit=100`, token, { signal: controller.signal });
         if (controller.signal.aborted) return;
         setList((previous) => previous?.inboxId === activeInboxId && expandedMessages.current
           ? { inboxId: activeInboxId, data: [...payload.data, ...previous.data.filter((item) => !payload.data.some((fresh) => fresh.id === item.id))] }
           : { inboxId: activeInboxId, data: payload.data });
-        if (!expandedMessages.current) setNextMessageOffset(payload.next_offset);
+        if (!expandedMessages.current) setNextMessageCursor(payload.next_cursor);
         setListError('');
         setLastUpdated(new Date());
       } catch (error) {
@@ -109,24 +109,24 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
   }, [enabled, getToken, selectedMessageId, retryKey]);
 
   const loadMoreInboxes = async () => {
-    if (nextInboxOffset === null) return;
+    if (nextInboxCursor === null) return;
     expandedInboxes.current = true;
     const token = await getToken();
-    const payload = await consoleFetch<{ data: ApiInbox[]; next_offset: number | null }>(`/console/inboxes?limit=100&offset=${nextInboxOffset}`, token);
+    const payload = await consoleFetch<{ data: ApiInbox[]; next_cursor: string | null }>(`/console/inboxes?limit=100&cursor=${encodeURIComponent(nextInboxCursor)}`, token);
     setInboxes((previous) => [...previous, ...payload.data.filter((item) => !previous.some((existing) => existing.id === item.id))]);
-    setNextInboxOffset(payload.next_offset);
+    setNextInboxCursor(payload.next_cursor);
   };
   const loadMoreMessages = async () => {
-    if (nextMessageOffset === null || !activeInboxId) return;
+    if (nextMessageCursor === null || !activeInboxId) return;
     expandedMessages.current = true;
     const token = await getToken();
     const inboxId = activeInboxId;
-    const payload = await consoleFetch<{ data: ApiMessageSummary[]; next_offset: number | null }>(`/console/inboxes/${inboxId}/messages?limit=100&offset=${nextMessageOffset}`, token);
+    const payload = await consoleFetch<{ data: ApiMessageSummary[]; next_cursor: string | null }>(`/console/inboxes/${inboxId}/messages?limit=100&cursor=${encodeURIComponent(nextMessageCursor)}`, token);
     setList((previous) => previous?.inboxId === inboxId ? { inboxId, data: [...previous.data, ...payload.data.filter((item) => !previous.data.some((existing) => existing.id === item.id))] } : previous);
-    setNextMessageOffset(payload.next_offset);
+    setNextMessageCursor(payload.next_cursor);
   };
 
-  const selectInbox = (id: string) => { setInboxId(id); setMessageId(null); setNextMessageOffset(null); expandedMessages.current = false; };
+  const selectInbox = (id: string) => { setInboxId(id); setMessageId(null); setNextMessageCursor(null); expandedMessages.current = false; };
   const removeMessage = (id: string) => {
     setList((current) => current ? { ...current, data: current.data.filter((message) => message.id !== id) } : null);
     refresh();
@@ -136,7 +136,7 @@ export function useMailboxes(getToken: () => Promise<string>, enabled: boolean) 
 
   return {
     inboxes, activeInbox, messages, selectedMessageId,
-    hasMoreInboxes: nextInboxOffset !== null, hasMoreMessages: nextMessageOffset !== null, loadMoreInboxes, loadMoreMessages,
+    hasMoreInboxes: nextInboxCursor !== null, hasMoreMessages: nextMessageCursor !== null, loadMoreInboxes, loadMoreMessages,
     detail: detail?.id === selectedMessageId ? detail : null,
     detailError, error: inboxError || listError,
     loading: enabled && inboxesLoading && !inboxes.length,

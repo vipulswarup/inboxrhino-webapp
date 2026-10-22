@@ -19,7 +19,10 @@ export type FirebaseClaims = {
   aud: string;
 };
 
+const FORCED_REFRESH_COOLDOWN_MS = 60_000;
+
 let cachedKeys: { expiresAt: number; keys: Map<string, CryptoKey> } | null = null;
+let lastForcedRefreshAt = 0;
 
 function decodeBase64Url(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -43,9 +46,16 @@ function cacheTtl(response: Response) {
   return Math.min(JWKS_TTL_MS, Math.max(60_000, Number(match[1]) * 1000));
 }
 
+export function resetFirebaseKeyCache() {
+  cachedKeys = null;
+  lastForcedRefreshAt = 0;
+}
+
 async function loadPublicKeys(forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && cachedKeys && cachedKeys.expiresAt > now) return cachedKeys.keys;
+  if (forceRefresh && cachedKeys && now - lastForcedRefreshAt < FORCED_REFRESH_COOLDOWN_MS) return cachedKeys.keys;
+  if (forceRefresh) lastForcedRefreshAt = now;
   const response = await fetch(JWKS_URL, { signal: AbortSignal.timeout(JWKS_FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error('Firebase JWKS could not be loaded.');
   const payload = (await response.json()) as JwksResponse;

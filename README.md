@@ -127,6 +127,8 @@ npm run release:worker
 
 The migration runs before the new Worker is published. Migrations must remain backward-compatible with the currently deployed Worker so a failed deployment does not leave production unusable.
 
+Mail delivery to a new inbox can lag the API response: Cloudflare Email Routing may take roughly 20–40 seconds to start accepting mail for a freshly created address, and senders can receive a temporary `550 Address does not exist` until then. Clients should wait or retry when sending to an inbox seconds after creating it.
+
 After deployment, verify at minimum:
 
 ```bash
@@ -143,7 +145,9 @@ The DNS record `_mta-sts.test.inboxrhino.in` must be a DNS-only CNAME to `_mta-s
 
 ### Starter access codes
 
-Starter grants 1,100 active inboxes and 3,300 inbound emails per UTC month. An organisation owner with a verified email can enter a code on the console Usage tab. No payment details are collected. The Worker compares the SHA-256 hash of the submitted code with its `STARTER_ACCESS_CODE_HASH` secret. Store only the hash in Cloudflare; keep the plaintext code outside the repository. Redeeming changes the organisation plan and writes an audit event. Only one shared code is currently supported.
+Starter grants 1,100 active inboxes and 3,300 inbound emails per UTC month. An organisation owner with a verified email can enter a code on the console Usage tab. No payment details are collected. Codes are single-use: only the SHA-256 hash is stored in the `access_codes` table, and redeeming marks the code as used by that organisation, upgrades the plan and writes an audit event. Codes may carry an optional expiry.
+
+Mint codes with `node scripts/create-access-code.mjs [count] [note] [days-valid]`. It prints the plaintext codes once (hand these out) and the `INSERT` SQL for the hashes. Save the SQL to a file and run `wrangler d1 execute inboxrhino-prod -c wrangler.backend.jsonc --remote --file <file>`. Keep the plaintext codes outside the repository. The legacy `STARTER_ACCESS_CODE_HASH` secret is no longer read and can be deleted.
 
 ## Operational notes
 

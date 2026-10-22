@@ -13,6 +13,7 @@ import {
 } from './lib/console-api';
 import { MessageViewer, type Message } from './message-viewer';
 import { useMailboxes } from './use-mailboxes';
+import { useRevealedApiKey } from './use-revealed-api-key';
 
 type Panel = 'inboxes' | 'api-keys' | 'usage';
 
@@ -53,7 +54,7 @@ export function ConsoleApp() {
   const mailbox = useMailboxes(auth.getIdToken, auth.session?.user.email_verified ?? false);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKeySummary[]>([]);
-  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const { revealedKey, reveal, clear: clearRevealedKey, clearIfRevoked } = useRevealedApiKey();
   const [error, setError] = useState('');
   const [redeemBusy, setRedeemBusy] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -138,7 +139,7 @@ export function ConsoleApp() {
         token,
         { method: 'POST', body: JSON.stringify({ name }) },
       );
-      setNewApiKey(payload.data.api_key);
+      reveal(payload.data.id, payload.data.api_key);
       setError('');
       await loadApiKeys();
       formElement.reset();
@@ -151,6 +152,7 @@ export function ConsoleApp() {
     try {
       const token = await auth.getSensitiveActionToken();
       await consoleFetch<null>(`/console/api-keys/${keyId}`, token, { method: 'DELETE' });
+      clearIfRevoked(keyId);
       setError('');
       await loadApiKeys();
     } catch (caught) {
@@ -187,7 +189,7 @@ export function ConsoleApp() {
       usage={usage ? { plan: usage.plan, received: usage.emails.received, limit: usage.emails.limit, inboxes: usage.inboxes.active, inboxLimit: usage.inboxes.limit } : undefined}
       verified={auth.session?.user.email_verified ?? false}
       panel={panel}
-      onPanelChange={setPanel}
+      onPanelChange={(next) => { if (next !== 'api-keys') clearRevealedKey(); setPanel(next); }}
       error={error || mailbox.error}
       loading={mailbox.loading}
       messagesLoading={mailbox.messagesLoading}
@@ -211,7 +213,8 @@ export function ConsoleApp() {
       onDeleteMessage={(messageId) => runAction(() => deleteMessage(messageId))}
       onDownloadAttachment={(attachmentId, filename) => runAction(() => auth.getIdToken().then((token) => downloadAttachment(attachmentId, token, filename)))}
       apiKeys={apiKeys}
-      newApiKey={newApiKey}
+      newApiKey={revealedKey}
+      onDismissApiKey={clearRevealedKey}
       onCreateApiKey={isOwner ? createApiKey : undefined}
       onRevokeApiKey={(keyId) => void revokeApiKey(keyId)}
       hasMoreInboxes={mailbox.hasMoreInboxes}

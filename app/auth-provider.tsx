@@ -14,7 +14,7 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createConsoleSession, type SessionResponse } from './lib/console-api';
 import { firebaseAuth } from './lib/firebase';
 
@@ -43,7 +43,7 @@ async function tokenAuthTime(user: User) {
   return Number(tokenResult.claims.auth_time ?? 0);
 }
 
-async function ensureRecentFirebaseAuth(user: User) {
+async function ensureRecentFirebaseAuth(user: User, askPassword: () => Promise<string>) {
   const authTime = await tokenAuthTime(user);
   const cutoff = Math.floor(Date.now() / 1000) - RECENT_AUTH_SECONDS;
   if (authTime >= cutoff) return;
@@ -56,8 +56,7 @@ async function ensureRecentFirebaseAuth(user: User) {
   if (providerId === 'password') {
     const email = user.email;
     if (!email) throw new Error('Sign out and sign in again to perform this action.');
-    const password = window.prompt('Confirm your password to create or revoke an API key.');
-    if (!password) throw new Error('Password confirmation is required.');
+    const password = await askPassword();
     await reauthenticateWithCredential(user, EmailAuthProvider.credential(email, password));
     return;
   }
@@ -70,6 +69,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pendingTurnstileRef = useRef<string | null>(null);
+  const [passwordRequest, setPasswordRequest] = useState<{ resolve: (password: string) => void; reject: (error: Error) => void } | null>(null);
+
+  const askPassword = useCallback(
+    () => new Promise<string>((resolve, reject) => setPasswordRequest({ resolve, reject })),
+    [],
+  );
+  const answerPassword = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const password = String(new FormData(event.currentTarget).get('password') ?? '');
+    if (!password) return;
+    passwordRequest?.resolve(password);
+    setPasswordRequest(null);
+  };
+  const cancelPassword = () => {
+    passwordRequest?.reject(new Error('Password confirmation is required.'));
+    setPasswordRequest(null);
+  };
 
   const getIdToken = useCallback(async (forceRefresh = false) => {
     const user = firebaseAuth.currentUser;
@@ -95,9 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getSensitiveActionToken = useCallback(async () => {
     const user = firebaseAuth.currentUser;
     if (!user) throw new Error('Not signed in.');
-    await ensureRecentFirebaseAuth(user);
+    await ensureRecentFirebaseAuth(user, askPassword);
     return user.getIdToken(true);
-  }, []);
+  }, [askPassword]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
@@ -189,7 +205,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {passwordRequest ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onKeyDown={(event) => { if (event.key === 'Escape') cancelPassword(); }}>
+          <form role="dialog" aria-modal="true" aria-labelledby="reauth-title" onSubmit={answerPassword} className="w-full max-w-sm space-y-3 rounded-xl bg-white p-5 shadow-xl">
+            <h2 id="reauth-title" className="text-base font-bold">Confirm your password</h2>
+            <p className="text-sm text-stone-600">For your security, confirm your password to create or revoke an API key.</p>
+            <input name="password" type="password" required autoFocus autoComplete="current-password" aria-label="Password" className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={cancelPassword} className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-semibold">Cancel</button>
+              <button type="submit" className="rounded-lg bg-[#0F3D3E] px-3 py-2 text-sm font-bold text-white">Confirm</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { type CSSProperties, type FormEvent } from 'react';
+import { type CSSProperties, type FormEvent, useEffect, useState } from 'react';
 import { LogoIcon } from './brand-logo';
 import { brandColors } from './brand';
 import { createSafeEmailDocument, type Message } from './message-demo-data';
@@ -39,6 +39,7 @@ export type MessageViewerUIProps = {
   inboxes?: ApiInbox[];
   apiKeys?: ApiKeySummary[];
   newApiKey?: string | null;
+  onDismissApiKey?: () => void;
   onAccountToggle?: () => void;
   onSignOut?: () => void;
   onResendVerification?: () => void;
@@ -70,6 +71,72 @@ function Logo() {
     <div className="flex items-center gap-2.5" aria-label="InboxRhino">
       <LogoIcon size={36} priority />
       <span className="hidden text-[15px] font-bold tracking-[-0.02em] text-[#1C1917] sm:block">InboxRhino</span>
+    </div>
+  );
+}
+
+/** Fallback for contexts where the async Clipboard API is unavailable or blocked. */
+function legacyCopy(value: string) {
+  const field = document.createElement('textarea');
+  field.value = value;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.appendChild(field);
+  field.select();
+  try {
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    field.remove();
+  }
+}
+
+function CopyKeyButton({ value }: { value: string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  useEffect(() => {
+    if (state === 'idle') return;
+    const timer = window.setTimeout(() => setState('idle'), 2000);
+    return () => window.clearTimeout(timer);
+  }, [state]);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setState('copied');
+    } catch {
+      setState(legacyCopy(value) ? 'copied' : 'failed');
+    }
+  };
+  const label = state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed — select the key manually' : 'Copy API key';
+  return (
+    <button type="button" onClick={copy} aria-label={label} title={label} className="grid size-8 shrink-0 place-items-center rounded-lg border border-amber-300 bg-white text-amber-950 transition hover:bg-amber-100">
+      {state === 'copied' ? (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="m5 12 5 5 9-10" /></svg>
+      ) : (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+      )}
+      <span role="status" className="sr-only">{state === 'copied' ? 'API key copied to clipboard' : state === 'failed' ? 'Copy failed' : ''}</span>
+    </button>
+  );
+}
+
+function DeleteInboxButton({ onConfirm }: { onConfirm: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  if (!confirming) {
+    return (
+      <button type="button" aria-label="Delete inbox" onClick={() => setConfirming(true)} className="rounded-lg border border-red-200 px-2 py-1 text-[11px] font-bold text-red-700">
+        Delete
+      </button>
+    );
+  }
+  return (
+    <div role="alertdialog" aria-label="Confirm inbox deletion" className="max-w-[170px] rounded-lg border border-red-200 bg-red-50 p-2 text-[11px] text-red-900">
+      <p className="font-bold">Delete this inbox and all its emails?</p>
+      <div className="mt-2 flex gap-2">
+        <button type="button" onClick={() => { setConfirming(false); onConfirm(); }} className="rounded-md bg-red-700 px-2 py-1 font-bold text-white">Confirm delete</button>
+        <button type="button" autoFocus onClick={() => setConfirming(false)} className="rounded-md border border-stone-300 bg-white px-2 py-1 font-bold">Cancel</button>
+      </div>
     </div>
   );
 }
@@ -143,7 +210,7 @@ export function MessageViewerUI(props: MessageViewerUIProps) {
         ) : null}
         {props.error ? <div role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:px-5">{props.error}</div> : null}
 
-        <div className="grid min-h-[calc(100vh-64px)] grid-cols-1 md:grid-cols-[160px_280px_minmax(0,1fr)] lg:grid-cols-[180px_320px_minmax(0,1fr)] lg:min-h-[calc(100vh-88px)]">
+        <div className="grid min-h-[calc(100vh-64px)] grid-cols-1 content-start bg-[var(--brand-cream)] md:content-stretch md:bg-transparent md:grid-cols-[160px_280px_minmax(0,1fr)] lg:grid-cols-[180px_320px_minmax(0,1fr)] lg:min-h-[calc(100vh-88px)]">
           <aside className="flex border-b border-r border-[#1C1917]/10 bg-[var(--brand-cream)] p-2 md:flex-col md:py-4">
             <nav aria-label="Primary navigation" className="flex flex-1 gap-1 md:flex-col md:gap-2">
               {(['inboxes', 'api-keys', 'usage'] as Panel[]).map((target) => (
@@ -166,9 +233,7 @@ export function MessageViewerUI(props: MessageViewerUIProps) {
                     <p className="mt-1 text-lg font-bold tracking-[-0.025em]">{props.activeInbox.local_part}</p>
                   </div>
                   {props.isLive && props.onDeleteInbox && props.activeInbox.id !== 'none' ? (
-                    <button type="button" aria-label="Delete inbox" onClick={props.onDeleteInbox} className="rounded-lg border border-red-200 px-2 py-1 text-[11px] font-bold text-red-700">
-                      Delete
-                    </button>
+                    <DeleteInboxButton key={props.activeInbox.id} onConfirm={props.onDeleteInbox} />
                   ) : null}
                 </div>
                 <button type="button" disabled={props.activeInbox.id === 'none'} onClick={props.onCopyAddress} className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-left shadow-sm transition hover:border-stone-300">
@@ -239,8 +304,18 @@ export function MessageViewerUI(props: MessageViewerUIProps) {
                   <h2 className="text-lg font-bold">API keys</h2>
                   {props.newApiKey ? (
                     <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs">
-                      <p className="font-bold text-amber-950">Copy this key now. It will not be shown again.</p>
-                      <code className="mt-2 block break-all font-mono">{props.newApiKey}</code>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-bold text-amber-950">Copy this key now. It will not be shown again.</p>
+                        {props.onDismissApiKey ? (
+                          <button type="button" onClick={props.onDismissApiKey} className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-0.5 font-bold text-amber-950 hover:bg-amber-100">
+                            I’ve saved it
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="mt-2 flex items-start gap-2">
+                        <code className="block min-w-0 flex-1 break-all font-mono">{props.newApiKey}</code>
+                        <CopyKeyButton value={props.newApiKey} />
+                      </div>
                     </div>
                   ) : null}
                   {props.onCreateApiKey ? (

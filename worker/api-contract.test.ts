@@ -33,7 +33,7 @@ const executionContext = () =>
   }) as unknown as ExecutionContext;
 
 async function applyMigrations(db: D1Database) {
-  const names = ['0000_premium_penance.sql', '0001_foamy_meltdown.sql', '0002_optimal_korg.sql', '0003_optimal_psylocke.sql', '0004_auth_users.sql'];
+  const names = ['0000_premium_penance.sql', '0001_foamy_meltdown.sql', '0002_optimal_korg.sql', '0003_optimal_psylocke.sql', '0004_auth_users.sql', '0005_access_codes.sql'];
   for (const name of names) {
     const sql = await readFile(join(process.cwd(), 'migrations', name), 'utf8');
     for (const statement of sql.split('--> statement-breakpoint').map((part) => part.trim()).filter(Boolean)) {
@@ -329,6 +329,20 @@ describe('InboxRhino API contract', () => {
     expect(usage?.received_count).toBe(10);
   });
 
+  it('reaps inboxes stuck in provisioning but keeps recent ones', async () => {
+    const now = Date.now();
+    const insert = env.DB.prepare(
+      "INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES (?, 'org_test', 'dom_test', ?, ?, 'provisioning', ?)",
+    );
+    await env.DB.batch([
+      insert.bind('inbox_stuck', 'stuck', 'stuck@test.inboxrhino.in', now - 11 * 60 * 1000),
+      insert.bind('inbox_fresh', 'fresh', 'fresh@test.inboxrhino.in', now - 60 * 1000),
+    ]);
+    await cleanup(env);
+    const rows = await env.DB.prepare("SELECT id FROM inboxes WHERE id IN ('inbox_stuck', 'inbox_fresh')").all<{ id: string }>();
+    expect(rows.results.map((row) => row.id)).toEqual(['inbox_fresh']);
+  });
+
   it('drains every expired-message cleanup batch', async () => {
     const now = Date.now();
     await env.DB.prepare(
@@ -383,21 +397,82 @@ describe('authenticated console lifecycle', () => {
     await expect(messages.json()).resolves.toMatchObject({ data: [{ id: 'msg_page_2' }], next_offset: 1 });
   });
 
+  it('paginates console lists by cursor without skipping rows when new ones arrive', async () => {
+    await consoleUser();
+    const now = Date.now();
+    await env.DB.batch(Array.from({ length: 3 }, (_, index) => env.DB.prepare(
+      'INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).bind(`inbox_cur_${index}`, 'org_test', 'dom_test', `cur${index}`, `cur${index}@test.inboxrhino.in`, 'active', now + index)));
+    const first = await (await request('/console/inboxes?limit=2', {}, 'firebase-test')).json() as { data: Array<{ id: string }>; next_cursor: string };
+    expect(first.data.map((row) => row.id)).toEqual(['inbox_cur_2', 'inbox_cur_1']);
+    // A newer inbox arrives between page requests; offset paging would now repeat inbox_cur_1.
+    await env.DB.prepare('INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind('inbox_cur_new', 'org_test', 'dom_test', 'curnew', 'curnew@test.inboxrhino.in', 'active', now + 10).run();
+    const second = await (await request(`/console/inboxes?limit=2&cursor=${encodeURIComponent(first.next_cursor)}`, {}, 'firebase-test')).json() as { data: Array<{ id: string }>; next_cursor: string | null };
+    expect(second.data.map((row) => row.id)).toEqual(['inbox_cur_0']);
+    expect(second.next_cursor).toBeNull();
+    expect((await request('/console/inboxes?cursor=!!!', {}, 'firebase-test')).status).toBe(422);
+  });
+
+  it('enforces the concurrent long-poll limit atomically and ignores expired rows', async () => {
+    await env.DB.prepare(
+      "INSERT INTO inboxes (id, organisation_id, domain_id, local_part, address, status, created_at) VALUES ('inbox_poll', 'org_test', 'dom_test', 'poll', 'poll@test.inboxrhino.in', 'active', ?)",
+    ).bind(Date.now()).run();
+    const insert = env.DB.prepare("INSERT INTO long_polls (id, organisation_id, api_key_id, expires_at) VALUES (?, 'org_test', 'key_test', ?)");
+    await env.DB.batch([
+      ...Array.from({ length: 5 }, (_, index) => insert.bind(`poll_expired_${index}`, Date.now() - 1000)),
+      ...Array.from({ length: 10 }, (_, index) => insert.bind(`poll_live_${index}`, Date.now() + 60_000)),
+    ]);
+    const blocked = await request('/v1/inboxes/inbox_poll/messages?wait_seconds=1');
+    expect(blocked.status).toBe(429);
+    await env.DB.prepare("DELETE FROM long_polls WHERE id = 'poll_live_0'").run();
+    const allowed = await request('/v1/inboxes/inbox_poll/messages?wait_seconds=1');
+    expect(allowed.status).toBe(204);
+    const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM long_polls WHERE id LIKE 'poll_live_%'").first<{ count: number }>();
+    expect(remaining?.count).toBe(9);
+  }, 15_000);
+
   it('redeems Starter only with the configured code and applies its quotas', async () => {
     await consoleUser();
-    env.STARTER_ACCESS_CODE_HASH = await sha256('test-starter-code');
+    const insertCode = async (code: string, expiresAt: number | null = null) => env.DB.prepare('INSERT INTO access_codes (code_hash, plan, created_at, expires_at) VALUES (?, ?, ?, ?)').bind(await sha256(code), 'starter', Date.now(), expiresAt).run();
+    await insertCode('test-starter-code');
+    await insertCode('expired-code', Date.now() - 1000);
     const redeem = (code: string) => request('/console/redeem-starter', { method: 'POST', body: JSON.stringify({ code }) }, 'firebase-test');
     expect((await redeem('wrong-code')).status).toBe(403);
+    expect((await redeem('expired-code')).status).toBe(403);
     const before = await env.DB.prepare("SELECT plan FROM organisations WHERE id = 'org_test'").first<{ plan: string }>();
     expect(before?.plan).toBe('free');
     expect((await redeem('test-starter-code')).status).toBe(200);
     expect((await redeem('test-starter-code')).status).toBe(409);
+    const stored = await env.DB.prepare('SELECT redeemed_by_organisation_id FROM access_codes WHERE code_hash = ?').bind(await sha256('test-starter-code')).first<{ redeemed_by_organisation_id: string | null }>();
+    expect(stored?.redeemed_by_organisation_id).toBe('org_test');
     const usage = await request('/v1/usage');
     await expect(usage.json()).resolves.toMatchObject({ plan: 'starter', inboxes: { limit: 1100 }, emails: { limit: 3300 } });
     const consoleUsage = await request('/console/usage', {}, 'firebase-test');
     await expect(consoleUsage.json()).resolves.toMatchObject({ plan: 'starter', inboxes: { limit: 1100 }, emails: { limit: 3300 } });
     const created = await request('/v1/inboxes', { method: 'POST', body: JSON.stringify({ prefix: 'starter-inbox' }) });
     expect(created.status).toBe(201);
+  });
+
+  it('records an audit event when an API key is revoked', async () => {
+    await consoleUser();
+    const created = await request('/console/api-keys', { method: 'POST', body: JSON.stringify({ name: 'To revoke' }) }, 'firebase-test');
+    const keyId = (await created.json() as { data: { id: string } }).data.id;
+    const revoked = await request(`/console/api-keys/${keyId}`, { method: 'DELETE' }, 'firebase-test');
+    expect(revoked.status).toBe(204);
+    const audit = await env.DB.prepare("SELECT actor_id FROM audit_events WHERE action = 'api_key.revoked' AND target_id = ?").bind(keyId).first<{ actor_id: string }>();
+    expect(audit?.actor_id).toBe('user_console');
+  });
+
+  it('lets an access code be redeemed only once across organisations', async () => {
+    await consoleUser();
+    await env.DB.prepare('INSERT INTO access_codes (code_hash, plan, created_at) VALUES (?, ?, ?)').bind(await sha256('one-time-code'), 'starter', Date.now()).run();
+    await env.DB.prepare("INSERT INTO organisations (id, name, plan, created_at) VALUES ('org_other', 'Other', 'free', ?)").bind(Date.now()).run();
+    await env.DB.prepare("UPDATE access_codes SET redeemed_by_organisation_id = 'org_other', redeemed_at = ? WHERE code_hash = ?").bind(Date.now(), await sha256('one-time-code')).run();
+    const response = await request('/console/redeem-starter', { method: 'POST', body: JSON.stringify({ code: 'one-time-code' }) }, 'firebase-test');
+    expect(response.status).toBe(403);
+    const org = await env.DB.prepare("SELECT plan FROM organisations WHERE id = 'org_test'").first<{ plan: string }>();
+    expect(org?.plan).toBe('free');
   });
 
   it('rate limits repeated invalid session tokens', async () => {

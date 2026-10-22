@@ -197,3 +197,17 @@ export const auditEvents = sqliteTable(
   },
   (table) => [index('idx_audit_org_created').on(table.organisationId, table.createdAt), index('idx_audit_expires').on(table.expiresAt)],
 );
+
+export const accessCodes = sqliteTable(
+  'access_codes',
+  {
+    codeHash: text('code_hash').primaryKey(),
+    plan: text('plan').notNull().default('starter'),
+    note: text('note'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+    redeemedByOrganisationId: text('redeemed_by_organisation_id'),
+    redeemedAt: integer('redeemed_at', { mode: 'timestamp_ms' }),
+  },
+  (table) => [index('idx_access_codes_redeemed_by').on(table.redeemedByOrganisationId)],
+);

@@ -39,6 +39,7 @@ export type MessageViewerProps = {
   onDownloadAttachment?: (attachmentId: string, filename: string) => void;
   apiKeys?: ApiKeySummary[];
   newApiKey?: string | null;
+  onDismissApiKey?: () => void;
   onCreateApiKey?: (event: FormEvent<HTMLFormElement>) => void;
   onRevokeApiKey?: (keyId: string) => void;
   hasMoreInboxes?: boolean;
@@ -107,6 +108,7 @@ export function MessageViewer(props: MessageViewerProps = {}) {
       inboxes={props.inboxes}
       apiKeys={props.apiKeys}
       newApiKey={props.newApiKey}
+      onDismissApiKey={props.onDismissApiKey}
       onAccountToggle={props.onAccountToggle}
       onSignOut={props.onSignOut}
       onResendVerification={props.onResendVerification}

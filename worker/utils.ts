@@ -142,3 +142,29 @@ export function contentBytes(content: ArrayBuffer | Uint8Array | string) {
 export function utf8Length(value: string) {
   return encoder.encode(value).byteLength;
 }
+
+/** R2 accepts at most 1000 keys per delete; one call per chunk keeps subrequests low. */
+export async function deleteObjects(bucket: R2Bucket, keys: string[]) {
+  for (let offset = 0; offset < keys.length; offset += 1000) {
+    await bucket.delete(keys.slice(offset, offset + 1000));
+  }
+}
+
+export function encodeCursor(createdAt: number, id: string) {
+  return btoa(`${createdAt}:${id}`);
+}
+
+export type ParsedCursor = { value: { createdAt: number; id: string } | null } | { error: string };
+
+export function decodeCursor(value: string | undefined): ParsedCursor {
+  if (!value) return { value: null };
+  try {
+    const [createdAt, id] = atob(value).split(':');
+    const timestamp = Number(createdAt);
+    if (!Number.isFinite(timestamp) || !id) return { error: 'cursor is invalid or malformed.' };
+    return { value: { createdAt: timestamp, id } };
+  } catch {
+    return { error: 'cursor is invalid or malformed.' };
+  }
+}
+

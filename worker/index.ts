@@ -10,6 +10,9 @@ import {
   cleanPreview,
   contentBytes,
   currentPeriod,
+  decodeCursor,
+  encodeCursor,
+  deleteObjects,
   AUDIT_RETENTION_MS,
   organisationPlan,
   planLimits,
@@ -40,6 +43,10 @@ import {
   toIso,
   utf8Length,
 } from './utils';
+
+const PROVISIONING_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_ORG_LONG_POLLS = 30;
+const MAX_KEY_LONG_POLLS = 10;
 
 export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -142,24 +149,6 @@ app.post('/setup', async (c) => {
 app.route('/console', consoleApp);
 
 app.use('/v1/*', apiAuth);
-
-function encodeCursor(createdAt: number, id: string) {
-  return btoa(`${createdAt}:${id}`);
-}
-
-type ParsedCursor = { value: { createdAt: number; id: string } | null } | { error: string };
-
-function decodeCursor(value: string | undefined): ParsedCursor {
-  if (!value) return { value: null };
-  try {
-    const [createdAt, id] = atob(value).split(':');
-    const timestamp = Number(createdAt);
-    if (!Number.isFinite(timestamp) || !id) return { error: 'cursor is invalid or malformed.' };
-    return { value: { createdAt: timestamp, id } };
-  } catch {
-    return { error: 'cursor is invalid or malformed.' };
-  }
-}
 
 function inboxJson(row: InboxRow) {
   return {
@@ -387,7 +376,7 @@ app.delete('/v1/inboxes/:id', async (c) => {
   )
     .bind(inbox.id, inbox.id, inbox.id)
     .all<{ object_key: string }>();
-  await Promise.all(objects.results.map((row) => c.env.MAIL.delete(row.object_key)));
+  await deleteObjects(c.env.MAIL, objects.results.map((row) => row.object_key));
   const now = Date.now();
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM attachments WHERE message_id IN (SELECT id FROM messages WHERE inbox_id = ?)').bind(inbox.id),
@@ -512,24 +501,27 @@ app.get('/v1/inboxes/:id/messages', async (c) => {
 
   let pollId: string | null = null;
   if (waitSeconds > 0) {
+    // Check-and-insert in one statement so concurrent requests cannot overshoot the limits.
+    // Expired rows are ignored here and removed by the scheduled cleanup, so polling adds no extra writes.
     const now = Date.now();
-    await c.env.DB.prepare('DELETE FROM long_polls WHERE expires_at <= ?').bind(now).run();
-    const counts = await c.env.DB.prepare(
-      'SELECT SUM(CASE WHEN organisation_id = ? THEN 1 ELSE 0 END) AS org_count, SUM(CASE WHEN api_key_id = ? THEN 1 ELSE 0 END) AS key_count FROM long_polls',
+    pollId = randomId('poll');
+    const reservation = await c.env.DB.prepare(
+      `INSERT INTO long_polls (id, organisation_id, api_key_id, expires_at)
+       SELECT ?, ?, ?, ?
+       WHERE (SELECT COUNT(*) FROM long_polls WHERE organisation_id = ? AND expires_at > ?) < ?
+         AND (SELECT COUNT(*) FROM long_polls WHERE api_key_id = ? AND expires_at > ?) < ?`,
     )
-      .bind(organisationId, keyId)
-      .first<{ org_count: number | null; key_count: number | null }>();
-    if ((counts?.org_count ?? 0) >= 30 || (counts?.key_count ?? 0) >= 10) {
+      .bind(pollId, organisationId, keyId, now + waitSeconds * 1000 + 5000, organisationId, now, MAX_ORG_LONG_POLLS, keyId, now, MAX_KEY_LONG_POLLS)
+      .run();
+    if ((reservation.meta.changes ?? 0) === 0) {
+      pollId = null;
       return jsonError(c, 429, 'long_poll_limit_exceeded', 'Concurrent long-poll limit exceeded.');
     }
-    pollId = randomId('poll');
-    await c.env.DB.prepare('INSERT INTO long_polls (id, organisation_id, api_key_id, expires_at) VALUES (?, ?, ?, ?)')
-      .bind(pollId, organisationId, keyId, now + waitSeconds * 1000 + 5000)
-      .run();
   }
 
   try {
     const deadline = Date.now() + waitSeconds * 1000;
+    let pollAttempt = 0;
     do {
       const result = await findMessages(c.env, organisationId, inboxId, queryValues);
       if (result.rows.length > 0) {
@@ -538,7 +530,8 @@ app.get('/v1/inboxes/:id/messages', async (c) => {
       }
       if (waitSeconds === 0) return c.json({ data: [], next_cursor: null });
       if (Date.now() >= deadline) break;
-      await sleep(Math.min(1500, Math.max(0, deadline - Date.now())));
+      pollAttempt += 1;
+      await sleep(Math.min(Math.min(500 * pollAttempt, 2500), Math.max(0, deadline - Date.now())));
     } while (Date.now() <= deadline);
     return c.body(null, 204);
   } finally {
@@ -562,7 +555,7 @@ app.delete('/v1/messages/:id', async (c) => {
     const exists = await c.env.DB.prepare('SELECT id FROM messages WHERE id = ? AND organisation_id = ?').bind(id, organisationId).first();
     if (!exists) return jsonError(c, 404, 'message_not_found', 'Message not found.');
   }
-  await Promise.all(keys.map((key) => c.env.MAIL.delete(key)));
+  await deleteObjects(c.env.MAIL, keys);
   const now = Date.now();
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM attachments WHERE message_id = ? AND organisation_id = ?').bind(id, organisationId),
@@ -770,7 +763,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env) {
       await runWriteTasks(writes);
       await env.DB.batch(statements);
     } catch (error) {
-      await Promise.all([textObjectKey, htmlObjectKey, ...attachmentRows.map((row) => row.object_key)].filter((key): key is string => Boolean(key)).map((key) => env.MAIL.delete(key)));
+      await deleteObjects(env.MAIL, [textObjectKey, htmlObjectKey, ...attachmentRows.map((row) => row.object_key)].filter((key): key is string => Boolean(key)));
       throw error;
     }
   } catch (error) {
@@ -798,9 +791,7 @@ export async function cleanup(env: Env) {
       )
         .bind(now)
         .all<{ object_key: string }>();
-      for (let offset = 0; offset < objects.results.length; offset += 1000) {
-        await env.MAIL.delete(objects.results.slice(offset, offset + 1000).map((row) => row.object_key));
-      }
+      await deleteObjects(env.MAIL, objects.results.map((row) => row.object_key));
       await env.DB.batch([
         env.DB.prepare(
           'DELETE FROM attachments WHERE message_id IN (SELECT id FROM messages WHERE expires_at <= ? ORDER BY expires_at, id LIMIT 500)',
@@ -809,6 +800,7 @@ export async function cleanup(env: Env) {
       ]);
     }
   } while (expiredCount === 500);
+  await env.DB.prepare("DELETE FROM inboxes WHERE status = 'provisioning' AND created_at <= ?").bind(now - PROVISIONING_TIMEOUT_MS).run();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM inboxes WHERE status = 'deleted' AND quarantine_until <= ?").bind(now),
     env.DB.prepare('DELETE FROM idempotency_keys WHERE expires_at <= ?').bind(now),

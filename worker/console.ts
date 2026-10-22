@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { verifyFirebaseIdToken } from './firebase-auth';
 import { consoleAuth, requireOwner, requireRecentAuth, requireVerifiedEmail } from './console-auth';
 import { createEmailRoute, deleteEmailRoute, EmailRoutingError } from './email-routing';
@@ -8,9 +8,11 @@ import type { AttachmentRow, Env, InboxRow, MessageRow, Variables } from './type
 import {
   AUDIT_RETENTION_MS,
   currentPeriod,
+  decodeCursor,
+  encodeCursor,
+  deleteObjects,
   organisationPlan,
   planLimits,
-  timingSafeEqual,
   generatedPrefix,
   jsonError,
   normalizePrefix,
@@ -28,6 +30,21 @@ consoleApp.use('*', async (c, next) => {
   c.header('Cache-Control', 'private, no-store');
   await next();
 });
+
+type ConsolePage = { limit: number; offset: number; cursor: { createdAt: number; id: string } | null };
+
+/** Cursor pagination is preferred; `offset` remains for clients that predate it. */
+function parsePage(c: Context): ConsolePage | { error: Response } {
+  const parsedLimit = parseLimit(c.req.query('limit'));
+  if ('error' in parsedLimit) return { error: jsonError(c, 422, 'invalid_limit', parsedLimit.error) };
+  const parsedCursor = decodeCursor(c.req.query('cursor'));
+  if ('error' in parsedCursor) return { error: jsonError(c, 422, 'invalid_cursor', parsedCursor.error) };
+  const offset = Number(c.req.query('offset') ?? '0');
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000) {
+    return { error: jsonError(c, 422, 'invalid_offset', 'offset must be an integer between 0 and 10000.') };
+  }
+  return { limit: parsedLimit.value, offset, cursor: parsedCursor.value };
+}
 
 function isBlockedSignupEmail(email: string, inboxDomain: string) {
   const normalized = email.trim().toLowerCase();
@@ -327,7 +344,7 @@ consoleApp.delete('/api-keys/:id', async (c) => {
     c.get('requestId'),
     now,
     now + AUDIT_RETENTION_MS,
-  );
+  ).run();
   return c.body(null, 204);
 });
 
@@ -344,12 +361,22 @@ consoleApp.post('/redeem-starter', async (c) => {
   try { body = await c.req.json(); } catch { return jsonError(c, 422, 'invalid_json', 'Request body must be valid JSON.'); }
   const code = typeof body.code === 'string' ? body.code.trim() : '';
   if (!code || code.length > 256) return jsonError(c, 422, 'invalid_code', 'Enter a valid access code.');
-  if (!c.env.STARTER_ACCESS_CODE_HASH) return jsonError(c, 503, 'redemption_unavailable', 'Access codes are not configured.');
-  const valid = timingSafeEqual(await sha256(code), c.env.STARTER_ACCESS_CODE_HASH);
-  if (!valid) return jsonError(c, 403, 'invalid_code', 'Access code is invalid.');
-  const updated = await c.env.DB.prepare("UPDATE organisations SET plan = 'starter' WHERE id = ? AND plan = 'free'").bind(organisationId).run();
-  if ((updated.meta.changes ?? 0) === 0) return jsonError(c, 409, 'already_upgraded', 'This organisation is already on Starter.');
+  const organisation = await c.env.DB.prepare('SELECT plan FROM organisations WHERE id = ?').bind(organisationId).first<{ plan: string }>();
+  if (organisation?.plan !== 'free') return jsonError(c, 409, 'already_upgraded', 'This organisation is already on Starter.');
   const now = Date.now();
+  const codeHash = await sha256(code);
+  const claimed = await c.env.DB.prepare(
+    `UPDATE access_codes SET redeemed_by_organisation_id = ?, redeemed_at = ?
+     WHERE code_hash = ? AND redeemed_at IS NULL AND (expires_at IS NULL OR expires_at > ?)`,
+  )
+    .bind(organisationId, now, codeHash, now)
+    .run();
+  if ((claimed.meta.changes ?? 0) === 0) return jsonError(c, 403, 'invalid_code', 'Access code is invalid, expired or already used.');
+  const updated = await c.env.DB.prepare("UPDATE organisations SET plan = 'starter' WHERE id = ? AND plan = 'free'").bind(organisationId).run();
+  if ((updated.meta.changes ?? 0) === 0) {
+    await c.env.DB.prepare('UPDATE access_codes SET redeemed_by_organisation_id = NULL, redeemed_at = NULL WHERE code_hash = ?').bind(codeHash).run();
+    return jsonError(c, 409, 'already_upgraded', 'This organisation is already on Starter.');
+  }
   await c.env.DB.prepare('INSERT INTO audit_events (id, organisation_id, actor_id, action, target_id, request_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(randomId('audit'), organisationId, userId, 'plan.starter_redeemed', organisationId, c.get('requestId'), now, now + AUDIT_RETENTION_MS).run();
   return c.json({ plan: 'starter' });
@@ -383,18 +410,24 @@ consoleApp.get('/inboxes', async (c) => {
   const denied = requireVerifiedEmail(c);
   if (denied) return denied;
 
-  const parsedLimit = parseLimit(c.req.query('limit'));
-  if ('error' in parsedLimit) return jsonError(c, 422, 'invalid_limit', parsedLimit.error);
-  const limit = parsedLimit.value;
-  const offset = Number(c.req.query('offset') ?? '0');
-  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000) return jsonError(c, 422, 'invalid_offset', 'offset must be an integer between 0 and 10000.');
+  const page = parsePage(c);
+  if ('error' in page) return page.error;
   const { organisationId } = c.get('consoleAuth');
+  const cursor = page.cursor;
   const result = await c.env.DB.prepare(
-    "SELECT * FROM inboxes WHERE organisation_id = ? AND status = 'active' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+    `SELECT * FROM inboxes WHERE organisation_id = ? AND status = 'active'${cursor ? ' AND (created_at < ? OR (created_at = ? AND id < ?))' : ''}
+     ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
   )
-    .bind(organisationId, limit + 1, offset)
+    .bind(...(cursor ? [organisationId, cursor.createdAt, cursor.createdAt, cursor.id] : [organisationId]), page.limit + 1, cursor ? 0 : page.offset)
     .all<InboxRow>();
-  return c.json({ data: result.results.slice(0, limit).map(inboxJson), next_offset: result.results.length > limit ? offset + limit : null });
+  const rows = result.results.slice(0, page.limit);
+  const last = rows.at(-1);
+  const more = result.results.length > page.limit && last;
+  return c.json({
+    data: rows.map(inboxJson),
+    next_cursor: more ? encodeCursor(last.created_at, last.id) : null,
+    next_offset: more && !cursor ? page.offset + page.limit : null,
+  });
 });
 
 consoleApp.post('/inboxes', async (c) => {
@@ -511,7 +544,7 @@ consoleApp.delete('/inboxes/:id', async (c) => {
   )
     .bind(inbox.id, inbox.id, inbox.id)
     .all<{ object_key: string }>();
-  await Promise.all(objects.results.map((row) => c.env.MAIL.delete(row.object_key)));
+  await deleteObjects(c.env.MAIL, objects.results.map((row) => row.object_key));
   const now = Date.now();
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM attachments WHERE message_id IN (SELECT id FROM messages WHERE inbox_id = ?)').bind(inbox.id),
@@ -542,14 +575,23 @@ consoleApp.get('/inboxes/:id/messages', async (c) => {
 
   const parsedLimit = parseLimit(c.req.query('limit'));
   if ('error' in parsedLimit) return jsonError(c, 422, 'invalid_limit', parsedLimit.error);
-  const offset = Number(c.req.query('offset') ?? '0');
-  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000) return jsonError(c, 422, 'invalid_offset', 'offset must be an integer between 0 and 10000.');
+  const page = parsePage(c);
+  if ('error' in page) return page.error;
+  const cursor = page.cursor;
   const result = await c.env.DB.prepare(
-    'SELECT * FROM messages WHERE organisation_id = ? AND inbox_id = ? ORDER BY received_at DESC, id DESC LIMIT ? OFFSET ?',
+    `SELECT * FROM messages WHERE organisation_id = ? AND inbox_id = ?${cursor ? ' AND (received_at < ? OR (received_at = ? AND id < ?))' : ''}
+     ORDER BY received_at DESC, id DESC LIMIT ? OFFSET ?`,
   )
-    .bind(organisationId, inboxId, parsedLimit.value + 1, offset)
+    .bind(...(cursor ? [organisationId, inboxId, cursor.createdAt, cursor.createdAt, cursor.id] : [organisationId, inboxId]), page.limit + 1, cursor ? 0 : page.offset)
     .all<MessageRow>();
-  return c.json({ data: result.results.slice(0, parsedLimit.value).map(messageSummary), next_offset: result.results.length > parsedLimit.value ? offset + parsedLimit.value : null });
+  const rows = result.results.slice(0, page.limit);
+  const last = rows.at(-1);
+  const more = result.results.length > page.limit && last;
+  return c.json({
+    data: rows.map(messageSummary),
+    next_cursor: more ? encodeCursor(last.received_at, last.id) : null,
+    next_offset: more && !cursor ? page.offset + page.limit : null,
+  });
 });
 
 consoleApp.get('/messages/:id', async (c) => {
@@ -579,7 +621,7 @@ consoleApp.delete('/messages/:id', async (c) => {
   )
     .bind(id, id, id)
     .all<{ object_key: string }>();
-  await Promise.all(keys.results.map((row) => c.env.MAIL.delete(row.object_key)));
+  await deleteObjects(c.env.MAIL, keys.results.map((row) => row.object_key));
   const now = Date.now();
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM attachments WHERE message_id = ? AND organisation_id = ?').bind(id, organisationId),
