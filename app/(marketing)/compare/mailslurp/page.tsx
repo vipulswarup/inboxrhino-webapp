@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CompareTable } from '@/app/compare-table';
+import { CompareFaq, CompareTable } from '@/app/compare-table';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -21,6 +21,21 @@ const rows = [
   ['OTP / link extraction helpers', 'Not in v1; parse text or HTML yourself', 'Yes in SDKs and API'],
 ];
 
+const faqs = [
+  {
+    q: 'How do the InboxRhino and MailSlurp free plans compare?',
+    a: 'InboxRhino\'s free tier is 11 active inboxes and 33 inbound emails per UTC month. MailSlurp\'s public free sandbox is larger, at about 50 inboxes and 500 inbound emails per month.',
+  },
+  {
+    q: 'Does InboxRhino have SDKs like MailSlurp?',
+    a: 'Not in v1. Call the REST API from your tests, or generate a client from the OpenAPI specification. MailSlurp ships official SDKs for JavaScript, Java, Python, PHP, Ruby, C#, Go and more.',
+  },
+  {
+    q: 'Can InboxRhino test inboxes send email?',
+    a: 'No. InboxRhino inboxes are receive-only; they cannot send, reply, or forward as the generated address.',
+  },
+];
+
 export default function CompareMailslurpPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -35,20 +50,22 @@ export default function CompareMailslurpPage() {
       </p>
 
       <section className="mt-10 space-y-4 text-sm leading-6 text-stone-700">
-        <h2 className="text-xl font-bold text-[#1C1917]">Who each product fits</h2>
+        <h2 className="text-xl font-bold text-[#1C1917]">When to choose InboxRhino</h2>
         <p>
           InboxRhino is for teams that already send real mail from staging and need a public address the suite can wait on. Call REST from Playwright, open the HTML in the console, then delete the inbox. Paid INR checkout is listed and not open yet.
         </p>
+        <h2 className="pt-4 text-xl font-bold text-[#1C1917]">When to choose MailSlurp</h2>
         <p>
           MailSlurp is for teams that want official SDKs, OTP helpers, optional SMS, and a larger free development sandbox (about 50 retained inboxes and 500 inbound emails per month on the public free plan). Phone numbers and SMS are paid add-ons. Pro pricing starts around $50 per month in USD.
         </p>
       </section>
 
-      <CompareTable columns={['Capability', 'InboxRhino', 'MailSlurp']} rows={rows} />
+      <CompareTable heading="Features and pricing: InboxRhino vs MailSlurp" columns={['Capability', 'InboxRhino', 'MailSlurp']} rows={rows} />
 
       <p className="mt-6 text-xs leading-5 text-stone-500">
         Compared on 11 September 2026 from InboxRhino&apos;s live product and MailSlurp&apos;s public site and pricing page. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
       </p>
+      <CompareFaq faqs={faqs} />
       <p className="mt-8 text-sm text-stone-600">
         See{' '}
         <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">

@@ -50,6 +50,7 @@ export default async function BlogPostPage({ params }: PageProps) {
           title: post.title,
           description: post.description,
           datePublished: post.date ? `${post.date}T00:00:00Z` : '',
+          author: post.author,
         })}
       />
       <PageBreadcrumbs
@@ -59,7 +60,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         ]}
       />
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#0F3D3E]">
-        InboxRhino · {formatPostDate(post.date)}
+        {post.author ? `${post.author} · InboxRhino` : 'InboxRhino'} · {formatPostDate(post.date)}
       </p>
       <h1 className="mt-4 text-4xl font-bold tracking-[-0.04em]">{post.title}</h1>
       <p className="mt-4 text-sm leading-6 text-stone-600">{post.description}</p>

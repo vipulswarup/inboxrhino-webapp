@@ -10,6 +10,7 @@ import {
   OG_IMAGE_WIDTH,
   SITE_ORIGIN,
 } from './site';
+import { OG_IMAGE_PAGES } from './og-images';
 
 export type JsonLd = Record<string, unknown>;
 export type Crumb = { name: string; path: string };
@@ -33,6 +34,26 @@ export const PUBLIC_PATHS = [
   '/legal',
 ] as const;
 
+// Sitemap <lastmod> per public page. Bump the date when a page's content
+// materially changes; seo.test.ts fails if a public path is missing here.
+export const PAGE_LAST_MODIFIED: Record<(typeof PUBLIC_PATHS)[number], string> = {
+  '/': '2026-10-22',
+  '/about': '2026-09-11',
+  '/pricing': '2026-09-29',
+  '/blog': '2026-10-22',
+  '/docs': '2026-10-22',
+  '/docs/quickstart': '2026-09-11',
+  '/docs/api': '2026-09-15',
+  '/docs/playwright': '2026-09-11',
+  '/compare/tigrmail': '2026-10-22',
+  '/compare/mailosaur': '2026-10-22',
+  '/compare/mailhog': '2026-10-22',
+  '/compare/mailslurp': '2026-10-22',
+  '/compare/testmail': '2026-10-22',
+  '/india': '2026-09-11',
+  '/legal': '2026-09-29',
+};
+
 export const APP_ROBOTS_TXT = 'User-Agent: *\nDisallow: /\n';
 
 type PageMetaOptions = {
@@ -46,9 +67,14 @@ export function absoluteUrl(path: string): string {
   return path.startsWith('http') ? path : `${SITE_ORIGIN}${path}`;
 }
 
+export function ogImagePath(path: string): string {
+  return OG_IMAGE_PAGES.has(path) ? `/brand/og${path}.png` : OG_IMAGE_PATH;
+}
+
 export function pageMeta(path: string, title: string, description: string, options: PageMetaOptions = {}): Metadata {
   const url = absoluteUrl(path);
-  const imageUrl = absoluteUrl(OG_IMAGE_PATH);
+  const imagePath = ogImagePath(path);
+  const imageUrl = absoluteUrl(imagePath);
   const ogType = options.ogType ?? 'website';
   return {
     title: { absolute: title },
@@ -67,7 +93,7 @@ export function pageMeta(path: string, title: string, description: string, optio
           url: imageUrl,
           width: OG_IMAGE_WIDTH,
           height: OG_IMAGE_HEIGHT,
-          alt: OG_IMAGE_ALT,
+          alt: imagePath === OG_IMAGE_PATH ? OG_IMAGE_ALT : title,
         },
       ],
       ...(ogType === 'article' && options.publishedTime ? { publishedTime: options.publishedTime } : {}),
@@ -184,6 +210,7 @@ export function blogPostingJsonLd(input: {
   description: string;
   datePublished: string;
   dateModified?: string;
+  author?: string;
 }): JsonLd {
   const url = absoluteUrl(input.path);
   return {
@@ -191,12 +218,14 @@ export function blogPostingJsonLd(input: {
     '@type': 'BlogPosting',
     headline: input.title,
     description: input.description,
-    image: absoluteUrl(OG_IMAGE_PATH),
+    image: absoluteUrl(ogImagePath(input.path)),
     datePublished: input.datePublished,
     dateModified: input.dateModified || input.datePublished,
     mainEntityOfPage: url,
     url,
-    author: { '@id': `${SITE_ORIGIN}/#organization` },
+    author: input.author
+      ? { '@type': 'Person', name: input.author, worksFor: { '@id': `${SITE_ORIGIN}/#organization` } }
+      : { '@id': `${SITE_ORIGIN}/#organization` },
     publisher: { '@id': `${SITE_ORIGIN}/#organization` },
   };
 }
@@ -205,11 +234,10 @@ export function buildRobots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/compare/', '/brand/', '/openapi.yaml', '/postman/'],
+      allow: '/',
       disallow: ['/console', '/login'],
     },
     sitemap: [`${SITE_ORIGIN}/sitemap.xml`, `${SITE_ORIGIN}/news/sitemap.xml`],
-    host: SITE_ORIGIN.replace(/^https:\/\//, ''),
   };
 }
 
@@ -220,6 +248,7 @@ export function buildSitemap(
     url: absoluteUrl(path),
     changeFrequency: path === '/' || path === '/blog' ? ('weekly' as const) : ('monthly' as const),
     priority: path === '/' ? 1 : path === '/docs' ? 0.8 : 0.7,
+    lastModified: new Date(`${PAGE_LAST_MODIFIED[path]}T00:00:00Z`),
   }));
 
   const articles = posts.map((post) => ({
@@ -253,10 +282,23 @@ export function robotsHeaderValue(hostname: string, pathname: string): string | 
   return null;
 }
 
+// Marketing pages read the Host header, so vinext marks them dynamic and sends
+// `no-store`, which also disables the browser back/forward cache. They only
+// change per deploy, so let browsers keep them and revalidate.
+export const MARKETING_PAGE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
+
+export function marketingCacheControl(hostname: string, pathname: string): string | null {
+  if (hostname !== 'inboxrhino.in' && hostname !== 'localhost') return null;
+  if (isNoindexPath(pathname) || pathname === '/news' || pathname.startsWith('/news/')) return null;
+  if (isCacheablePublicAsset(pathname)) return null;
+  return MARKETING_PAGE_CACHE_CONTROL;
+}
+
 export function isCacheablePublicAsset(pathname: string): boolean {
   return (
     pathname === OG_IMAGE_PATH ||
     pathname === '/favicon.svg' ||
+    pathname === '/favicon.ico' ||
     pathname === '/apple-touch-icon.png' ||
     pathname === '/brand/logo-icon.svg' ||
     pathname === '/brand/logo-wordmark.svg' ||

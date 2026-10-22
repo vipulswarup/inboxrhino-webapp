@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CompareTable } from '@/app/compare-table';
+import { CompareFaq, CompareTable } from '@/app/compare-table';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -20,6 +20,21 @@ const rows = [
   ['SMS / SDKs', 'Not in v1', 'Not applicable'],
 ];
 
+const faqs = [
+  {
+    q: 'Is MailHog still maintained?',
+    a: 'MailHog\'s last release was in 2020. Mailpit is the maintained drop-in replacement and uses the same default ports.',
+  },
+  {
+    q: 'Can I use MailHog or Mailpit in GitHub Actions?',
+    a: 'Yes, if you run a Mailpit service container and point the application\'s SMTP at it. If staging sends through a real provider such as Amazon SES or Postmark, the mail goes to a real address, which needs a public MX inbox like InboxRhino.',
+  },
+  {
+    q: 'Does InboxRhino replace Mailpit for local development?',
+    a: 'No. For purely local SMTP capture on a laptop, Mailpit is free and simpler. InboxRhino is for tests where real mail is delivered to a real address, in CI or on a laptop.',
+  },
+];
+
 export default function CompareMailhogPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -38,20 +53,22 @@ export default function CompareMailhogPage() {
       </p>
 
       <section className="mt-10 space-y-4 text-sm leading-6 text-stone-700">
-        <h2 className="text-xl font-bold text-[#1C1917]">Who each product fits</h2>
+        <h2 className="text-xl font-bold text-[#1C1917]">When to choose Mailpit</h2>
         <p>
           Use Mailpit on a laptop when you can point the app at SMTP <code className="font-mono text-xs">localhost:1025</code>, inspect messages in the local UI, and optionally query the local REST API. You can run the same container in GitHub Actions, but then the application must still send to that container, not to Amazon SES or Postmark.
         </p>
+        <h2 className="pt-4 text-xl font-bold text-[#1C1917]">When to choose InboxRhino</h2>
         <p>
           Use InboxRhino when the product under test already sends real mail. Create an address, wait up to 180 seconds, read the HTML in a sandboxed viewer, then delete the inbox. That path is the same in CI as on a laptop. InboxRhino does not replace Mailpit for purely local SMTP capture, and it does not send mail.
         </p>
       </section>
 
-      <CompareTable columns={['Capability', 'InboxRhino', 'MailHog / Mailpit']} rows={rows} />
+      <CompareTable heading="Features compared: InboxRhino vs MailHog and Mailpit" columns={['Capability', 'InboxRhino', 'MailHog / Mailpit']} rows={rows} />
 
       <p className="mt-6 text-xs leading-5 text-stone-500">
         Compared on 7 September 2026 from InboxRhino&apos;s live product, Mailpit&apos;s public docs, and MailHog&apos;s GitHub status. Local-catcher behaviour can change with your Docker setup. InboxRhino paid checkout is not live.
       </p>
+      <CompareFaq faqs={faqs} />
       <p className="mt-8 text-sm text-stone-600">
         See{' '}
         <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">

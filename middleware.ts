@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { APP_ROBOTS_TXT, isAppHost, isCacheablePublicAsset, robotsHeaderValue } from './app/lib/seo';
+import { APP_ROBOTS_TXT, isAppHost, isCacheablePublicAsset, marketingCacheControl, robotsHeaderValue } from './app/lib/seo';
 import { browserSecurityHeaders } from './app/lib/security-headers';
 
 const CANONICAL_HOST = 'inboxrhino.in';
@@ -15,6 +15,8 @@ function withOptionalRobots(hostname: string, pathname: string, response: NextRe
   if (isCacheablePublicAsset(pathname)) {
     response.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
   }
+  const pageCacheControl = response.status === 200 ? marketingCacheControl(hostname, pathname) : null;
+  if (pageCacheControl) response.headers.set('Cache-Control', pageCacheControl);
   return response;
 }
 

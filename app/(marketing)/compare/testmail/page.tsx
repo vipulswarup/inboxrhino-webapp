@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CompareTable } from '@/app/compare-table';
+import { CompareFaq, CompareTable } from '@/app/compare-table';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -22,6 +22,21 @@ const rows = [
   ['Message delete for quota', 'Delete inbox to free active slots', 'Retention cron; no delete-in-API for quota'],
 ];
 
+const faqs = [
+  {
+    q: 'How do the InboxRhino and testmail.app free plans compare?',
+    a: 'InboxRhino\'s free tier is 11 active inboxes and 33 inbound emails per month, with 30-day message retention. testmail.app\'s free plan is 100 emails per month with one-day retention.',
+  },
+  {
+    q: 'Does InboxRhino support GraphQL?',
+    a: 'No. InboxRhino is a REST API with an OpenAPI specification and a Postman collection. testmail.app offers JSON REST and GraphQL with live queries.',
+  },
+  {
+    q: 'Does InboxRhino give spam scores?',
+    a: 'Not in v1. testmail.app includes SpamAssassin reports.',
+  },
+];
+
 export default function CompareTestmailPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -36,20 +51,22 @@ export default function CompareTestmailPage() {
       </p>
 
       <section className="mt-10 space-y-4 text-sm leading-6 text-stone-700">
-        <h2 className="text-xl font-bold text-[#1C1917]">Who each product fits</h2>
+        <h2 className="text-xl font-bold text-[#1C1917]">When to choose InboxRhino</h2>
         <p>
           InboxRhino fits Playwright and Cypress suites that need a real MX inbox, a browser viewer for QA, and a free tier large enough to wire one flow. Paid Starter/Growth/Scale prices are listed in INR; checkout is not open yet.
         </p>
+        <h2 className="pt-4 text-xl font-bold text-[#1C1917]">When to choose testmail.app</h2>
         <p>
           testmail.app fits teams that want a namespace.tag address scheme, GraphQL search, and live queries. The free plan is 100 emails per month with one-day retention after a trial. Higher plans unlock longer retention and custom namespaces.
         </p>
       </section>
 
-      <CompareTable columns={['Capability', 'InboxRhino', 'testmail.app']} rows={rows} />
+      <CompareTable heading="Features and pricing: InboxRhino vs testmail.app" columns={['Capability', 'InboxRhino', 'testmail.app']} rows={rows} />
 
       <p className="mt-6 text-xs leading-5 text-stone-500">
         Compared on 11 September 2026 from InboxRhino&apos;s live product and testmail.app&apos;s public site and pricing page. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
       </p>
+      <CompareFaq faqs={faqs} />
       <p className="mt-8 text-sm text-stone-600">
         See{' '}
         <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">

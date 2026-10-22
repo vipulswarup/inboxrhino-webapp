@@ -1,5 +1,5 @@
 ---
-title: Automated Testing of Email Flows using Vibe-Testing
+title: "Agentic Testing of Email Flows: Signup, OTP and Password Reset"
 description: Agentic testing needs an API-readable inbox for signup, password-reset, magic-links, and OTPs — plus a written test plan agents can follow.
 date: 2026-09-06
 slug: agentic-testing-email-flows

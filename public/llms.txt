@@ -1,0 +1,32 @@
+# InboxRhino
+
+> InboxRhino is a receive-only test email API. Create a real MX inbox on test.inboxrhino.in, wait up to 180 seconds for signup, OTP, magic-link or password-reset mail, assert on it from Playwright, Cypress or any HTTP client, and open the HTML in a sandboxed viewer. Inboxes cannot send, reply or forward. Messages are kept for 30 days.
+
+The free tier includes 11 active inboxes and 33 inbound emails per UTC month for one user. InboxRhino is built by Argali Knowledge Services Pvt Ltd, New Delhi. API base URL: https://api.inboxrhino.in/v1 (Bearer API key).
+
+## Docs
+
+- [Quickstart](https://inboxrhino.in/docs/quickstart): create an API key and an inbox, wait for a message, then delete the inbox
+- [API reference](https://inboxrhino.in/docs/api): authentication, inboxes, messages, wait-for-message, attachments, usage and error codes
+- [Playwright email testing](https://inboxrhino.in/docs/playwright): signup, OTP and magic-link tests without a plugin
+- [OpenAPI specification](https://inboxrhino.in/openapi.yaml): machine-readable /v1 contract
+- [Postman collection](https://inboxrhino.in/postman/InboxRhino.postman_collection.json)
+
+## Product
+
+- [Pricing](https://inboxrhino.in/pricing): Free and Starter plans, quotas and billing status
+- [INR billing and GST invoices](https://inboxrhino.in/india)
+- [About](https://inboxrhino.in/about)
+- [Privacy and terms](https://inboxrhino.in/legal)
+
+## Comparisons
+
+- [Mailosaur alternative](https://inboxrhino.in/compare/mailosaur)
+- [MailHog and Mailpit alternative](https://inboxrhino.in/compare/mailhog)
+- [MailSlurp alternative](https://inboxrhino.in/compare/mailslurp)
+- [InboxRhino vs testmail.app](https://inboxrhino.in/compare/testmail)
+- [InboxRhino vs Tigrmail](https://inboxrhino.in/compare/tigrmail)
+
+## Optional
+
+- [Blog](https://inboxrhino.in/blog): notes on agentic testing and email verification in CI

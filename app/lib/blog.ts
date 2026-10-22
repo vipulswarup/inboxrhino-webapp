@@ -5,6 +5,9 @@ export type BlogPostMeta = {
   title: string;
   description: string;
   date: string;
+  // Optional frontmatter `author`: a real person's name for the byline and
+  // BlogPosting schema. Posts without one are attributed to the organisation.
+  author?: string;
 };
 
 export type BlogPost = BlogPostMeta & {
@@ -46,6 +49,7 @@ function parsePost(raw: string, fallbackSlug: string): BlogPost {
     title: data.title || slug,
     description: data.description || '',
     date: data.date || '',
+    author: data.author || undefined,
     html: marked.parse(body, { async: false }) as string,
   };
 }
@@ -60,11 +64,12 @@ function allPosts(): BlogPost[] {
 }
 
 export function getAllPosts(): BlogPostMeta[] {
-  return allPosts().map(({ slug, title, description, date }) => ({
+  return allPosts().map(({ slug, title, description, date, author }) => ({
     slug,
     title,
     description,
     date,
+    author,
   }));
 }
 

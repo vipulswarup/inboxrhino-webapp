@@ -59,6 +59,7 @@ async function main() {
   const robotsType = robots.response.headers.get('content-type') || '';
   if (!robotsType.includes('text/plain')) fail(`/robots.txt content-type was ${robotsType}`);
   if (!robots.text.includes(`Sitemap: ${SITE_ORIGIN}/sitemap.xml`)) fail('robots.txt missing sitemap line');
+  if (/^Host:/im.test(robots.text)) fail('robots.txt should not use the non-standard Host directive');
   if (!robots.text.includes(`Sitemap: ${SITE_ORIGIN}/news/sitemap.xml`)) {
     fail('robots.txt missing news sitemap line');
   }
@@ -101,6 +102,28 @@ async function main() {
   assertStatus('/favicon.svg', favicon.response, 200);
   const apple = await get('/apple-touch-icon.png', { skipBody: true });
   assertStatus('/apple-touch-icon.png', apple.response, 200);
+  const faviconIco = await get('/favicon.ico', { skipBody: true });
+  assertStatus('/favicon.ico', faviconIco.response, 200);
+  const llms = await get('/llms.txt', { skipBody: true });
+  assertStatus('/llms.txt', llms.response, 200);
+
+  // Static files are served by Cloudflare assets via public/_headers, not middleware.
+  for (const path of ['/openapi.yaml', '/postman/InboxRhino.postman_collection.json']) {
+    const file = await get(path, { skipBody: true });
+    assertStatus(path, file.response, 200);
+    const robots = file.response.headers.get('x-robots-tag') || '';
+    if (!/noindex/i.test(robots)) fail(`${path} expected X-Robots-Tag noindex, got "${robots}"`);
+  }
+  for (const path of [OG_IMAGE_PATH, '/brand/og/compare/mailosaur.png']) {
+    const asset = await get(path, { skipBody: true });
+    assertStatus(path, asset.response, 200);
+    const cacheControl = asset.response.headers.get('cache-control') || '';
+    if (!/max-age=[1-9]/.test(cacheControl)) fail(`${path} expected a long Cache-Control, got "${cacheControl}"`);
+  }
+
+  const pricing = await get('/pricing', { skipBody: true });
+  const pricingCache = pricing.response.headers.get('cache-control') || '';
+  if (/no-store/i.test(pricingCache)) fail(`/pricing Cache-Control should allow bfcache, got "${pricingCache}"`);
 
   const missing = await get('/this-page-does-not-exist-seo-audit');
   if (missing.response.status !== 404) fail(`expected 404, got ${missing.response.status}`);

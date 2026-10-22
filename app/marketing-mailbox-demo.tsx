@@ -82,7 +82,7 @@ export function MarketingMailboxDemo() {
                 <span className="rounded-full bg-[#F4F1EA] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--brand-teal)]">Received</span>
                 <time className="text-xs text-stone-500">{active.dateLabel}</time>
               </div>
-              <h2 className="truncate text-xl font-bold tracking-[-0.03em] text-stone-950 sm:text-2xl">{active.subject}</h2>
+              <p className="truncate text-xl font-bold tracking-[-0.03em] text-stone-950 sm:text-2xl">{active.subject}</p>
               <p className="mt-3 text-sm">
                 <span className="font-semibold">{active.senderName}</span>
                 <span className="ml-1 text-stone-500">&lt;{active.senderEmail}&gt;</span>

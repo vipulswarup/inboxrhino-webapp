@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CompareTable } from '@/app/compare-table';
+import { CompareFaq, CompareTable } from '@/app/compare-table';
 import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { pageMeta } from '@/app/lib/seo';
 
@@ -22,6 +22,21 @@ const rows = [
   ['Send / reply from the test address', 'No; receive-only', 'Core plan can reply/send to external addresses'],
 ];
 
+const faqs = [
+  {
+    q: 'Is InboxRhino a free Mailosaur alternative?',
+    a: 'For email-only tests, yes. InboxRhino has a live free tier with 11 active inboxes and 33 inbound emails per UTC month. Mailosaur offers a 14-day trial with no ongoing free plan; its Personal plan starts at $20 per month billed annually.',
+  },
+  {
+    q: 'Does InboxRhino support SMS like Mailosaur?',
+    a: 'No. InboxRhino is receive-only email. Mailosaur sells SMS and MFA phone numbers as an add-on.',
+  },
+  {
+    q: 'Can I test email in Playwright or Cypress without the Mailosaur SDK?',
+    a: 'Yes. InboxRhino has no SDK in v1, so tests call the REST API directly. One request waits up to 180 seconds for the message and can filter by subject or sender.',
+  },
+];
+
 export default function CompareMailosaurPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -36,20 +51,22 @@ export default function CompareMailosaurPage() {
       </p>
 
       <section className="mt-10 space-y-4 text-sm leading-6 text-stone-700">
-        <h2 className="text-xl font-bold text-[#1C1917]">Who each product fits</h2>
+        <h2 className="text-xl font-bold text-[#1C1917]">When to choose InboxRhino</h2>
         <p>
           InboxRhino is for teams that already send real mail from staging and need a public MX address the suite can wait on. The free tier is enough to wire one flow on a laptop. Indian GST invoicing is designed and marked coming soon; it is not live. InboxRhino does not send SMS, preview messages across Outlook/Gmail devices, or ship an SDK in v1.
         </p>
+        <h2 className="pt-4 text-xl font-bold text-[#1C1917]">When to choose Mailosaur</h2>
         <p>
           Mailosaur is for QA organisations that want email plus SMS, MFA numbers, language SDKs, and optional email-client previews. Personal starts at $20 per month billed annually for one inbox and 15,000 emails. Core starts at $50 per month billed annually. SMS and email previews are separate add-ons on the public pricing page.
         </p>
       </section>
 
-      <CompareTable columns={['Capability', 'InboxRhino', 'Mailosaur']} rows={rows} />
+      <CompareTable heading="Features and pricing: InboxRhino vs Mailosaur" columns={['Capability', 'InboxRhino', 'Mailosaur']} rows={rows} />
 
       <p className="mt-6 text-xs leading-5 text-stone-500">
         Compared on 7 September 2026 from InboxRhino&apos;s live product and Mailosaur&apos;s public site and pricing page. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
       </p>
+      <CompareFaq faqs={faqs} />
       <p className="mt-8 text-sm text-stone-600">
         See{' '}
         <a href="/pricing" className="font-bold text-[#0F3D3E]">
