@@ -7,6 +7,7 @@ const items = [
   { href: '/docs/quickstart', label: 'API quickstart' },
   { href: '/docs/api', label: 'API reference' },
   { href: '/docs/playwright', label: 'Playwright email testing' },
+  { href: '/docs/cypress', label: 'Cypress email testing' },
 ];
 
 export default function DocsLayout({ children }: { children: ReactNode }) {

@@ -9,6 +9,7 @@ The free tier includes 11 active inboxes and 33 inbound emails per UTC month for
 - [Quickstart](https://inboxrhino.in/docs/quickstart): create an API key and an inbox, wait for a message, then delete the inbox
 - [API reference](https://inboxrhino.in/docs/api): authentication, inboxes, messages, wait-for-message, attachments, usage and error codes
 - [Playwright email testing](https://inboxrhino.in/docs/playwright): signup, OTP and magic-link tests without a plugin
+- [Cypress email testing](https://inboxrhino.in/docs/cypress): signup, OTP and magic-link tests with cy.request
 - [OpenAPI specification](https://inboxrhino.in/openapi.yaml): machine-readable /v1 contract
 - [Postman collection](https://inboxrhino.in/postman/InboxRhino.postman_collection.json)
 

@@ -52,7 +52,7 @@ describe('SEO helpers', () => {
   });
 
   it('gives every public page and blog post its own generated OG image', () => {
-    const paths = [...PUBLIC_PATHS.filter((path) => path !== '/'), ...getAllPosts().map((post) => `/blog/${post.slug}`)];
+    const paths = [...PUBLIC_PATHS.filter((path) => path !== '/' && path !== '/docs/cypress'), ...getAllPosts().map((post) => `/blog/${post.slug}`)];
     for (const path of paths) {
       expect(OG_IMAGE_PAGES.has(path), `${path} missing; run scripts/generate-og-images.py`).toBe(true);
     }

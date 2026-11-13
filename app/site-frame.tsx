@@ -73,6 +73,9 @@ export function SiteFooter() {
               <Link href="/docs/playwright" className={linkClass}>
                 Playwright email testing
               </Link>
+              <Link href="/docs/cypress" className={linkClass}>
+                Cypress email testing
+              </Link>
             </nav>
           </div>
           <div>

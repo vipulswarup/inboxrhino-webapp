@@ -26,6 +26,11 @@ const guides = [
     title: 'Playwright email testing',
     body: 'Assert signup, OTP and password-reset mail from Playwright without a plugin.',
   },
+  {
+    href: '/docs/cypress',
+    title: 'Cypress email testing',
+    body: 'Test signup, OTP and password-reset mail from Cypress with cy.request.',
+  },
 ];
 
 const steps = [
