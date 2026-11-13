@@ -4,10 +4,11 @@ import { PageBreadcrumbs } from '@/app/page-breadcrumbs';
 import { API_ORIGIN } from '@/app/lib/site';
 import { pageMeta } from '@/app/lib/seo';
 import { DocsPager } from '@/app/docs-pager';
+import { CompareFaq } from '@/app/compare-table';
 
 export const metadata: Metadata = pageMeta(
   '/docs/playwright',
-  'Playwright email testing — signup, OTP and magic links',
+  'Playwright email testing: signup, OTP and magic links',
   'Playwright email testing with InboxRhino: create a real inbox, wait for signup or OTP mail, assert the message, then delete the inbox.',
 );
 
@@ -89,6 +90,13 @@ jobs:
           INBOXRHINO_API_KEY: \${{ secrets.INBOXRHINO_API_KEY }}
           SIGNUP_URL: https://staging.example.com/signup`;
 
+const faqs = [
+  {
+    q: 'Can I use InboxRhino as a temporary inbox API for Playwright?',
+    a: 'Yes. Create a real MX inbox through the REST API, use Playwright request to wait up to 180 seconds for a matching message, assert on its text or HTML, then delete the inbox. No plugin or official SDK is required.',
+  },
+];
+
 export default function PlaywrightPage() {
   return (
     <article className="space-y-8 pb-16">
@@ -101,7 +109,7 @@ export default function PlaywrightPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-[-0.03em]">Playwright email testing</h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          Playwright email testing without a plugin: use <code className="font-mono text-xs">fetch</code> or Playwright&apos;s <code className="font-mono text-xs">request</code> API against a real InboxRhino inbox. Cover signup verification, OTP codes, magic links and password resets without MailHog or a USD QA platform. Wait up to 180 seconds, then delete the inbox so quota is released.
+          Use InboxRhino as a temporary inbox API for Playwright: create a real MX inbox, then use Playwright&apos;s request API or fetch to wait up to 180 seconds for signup, OTP, magic-link, or password-reset email. No plugin is required. Assert on the message, then delete the inbox to release its active slot.
         </p>
       </div>
       <section className="space-y-3">
@@ -112,6 +120,15 @@ export default function PlaywrightPage() {
             messages API
           </a>
           .
+        </p>
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold">Choosing an email testing tool</h2>
+        <p className="text-sm leading-6 text-stone-600">
+          For purely local SMTP capture, Mailpit may be simpler. If you are comparing hosted inbox APIs, see our{' '}
+          <a href="/compare/mailosaur" className="font-bold text-[#0F3D3E]">Mailosaur alternative comparison</a>{' '}
+          and <a href="/compare/mailslurp" className="font-bold text-[#0F3D3E]">MailSlurp alternative comparison</a>.
+          For the local-versus-real-MX distinction, see the <a href="/compare/mailhog" className="font-bold text-[#0F3D3E]">MailHog and Mailpit comparison</a>.
         </p>
       </section>
       <CodeSnippet code={playwrightTest} />
@@ -156,6 +173,7 @@ export default function PlaywrightPage() {
         </a>
         .
       </p>
+      <CompareFaq faqs={faqs} />
       <DocsPager />
     </article>
   );

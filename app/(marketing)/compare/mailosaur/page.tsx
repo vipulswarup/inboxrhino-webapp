@@ -5,7 +5,7 @@ import { pageMeta } from '@/app/lib/seo';
 
 export const metadata: Metadata = pageMeta(
   '/compare/mailosaur',
-  'Mailosaur alternative — InboxRhino vs Mailosaur for email tests',
+  'Mailosaur alternative — InboxRhino vs Mailosaur',
   'Looking for a Mailosaur alternative? Compare InboxRhino for free-tier email-only tests with a visual inbox. Mailosaur adds SMS, SDKs and USD plans.',
 );
 
@@ -43,11 +43,18 @@ export default function CompareMailosaurPage() {
       <PageBreadcrumbs items={[{ name: 'Mailosaur alternative', path: '/compare/mailosaur' }]} />
       <h1 className="text-4xl font-bold tracking-[-0.04em]">Mailosaur alternative: InboxRhino vs Mailosaur</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
-        Searching for a Mailosaur alternative for email-only tests? Mailosaur is a paid QA platform for email and SMS. InboxRhino is a receive-only test-email API with a sandboxed HTML mailbox. Choose InboxRhino when you only need signup, OTP, magic-link, or password-reset mail in Playwright or Cypress. Choose Mailosaur when you need SMS, official SDKs, client previews, or a USD QA platform with a trial rather than a free tier. Confirm current Mailosaur behaviour on{' '}
+        Choose InboxRhino if your Playwright or Cypress tests need receive-only, real-MX email for signup, OTP, magic links, or password resets with a sandboxed viewer and live free tier. Choose Mailosaur if you need email plus SMS, official SDKs, or client previews. Check Mailosaur&apos;s site for current features and pricing before deciding: {' '}
         <a href="https://mailosaur.com" className="font-bold text-[#0F3D3E]" rel="noopener noreferrer">
           mailosaur.com
         </a>
         .
+      </p>
+
+      <p className="mt-5 max-w-2xl text-sm leading-6 text-stone-600">
+        Using this from Playwright? Follow the official{' '}
+        <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">Playwright email testing guide</a>{' '}
+        to create a real inbox, wait for a message, and clean it up. You can also start with the{' '}
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">API quickstart</a>.
       </p>
 
       <section className="mt-10 space-y-4 text-sm leading-6 text-stone-700">
@@ -72,6 +79,8 @@ export default function CompareMailosaurPage() {
         <a href="/pricing" className="font-bold text-[#0F3D3E]">
           InboxRhino pricing and quotas
         </a>
+        ,{' '}
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">API quickstart</a>
         , the{' '}
         <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">
           Playwright email testing
