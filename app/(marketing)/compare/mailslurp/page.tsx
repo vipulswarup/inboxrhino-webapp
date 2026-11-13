@@ -5,7 +5,7 @@ import { pageMeta } from '@/app/lib/seo';
 
 export const metadata: Metadata = pageMeta(
   '/compare/mailslurp',
-  'InboxRhino vs MailSlurp — a MailSlurp alternative for email-only tests',
+  'MailSlurp alternative — InboxRhino vs MailSlurp',
   'Compare InboxRhino and MailSlurp. InboxRhino is a free-tier receive-only MX inbox. MailSlurp adds SDKs, SMS and a larger free sandbox.',
 );
 
@@ -42,11 +42,18 @@ export default function CompareMailslurpPage() {
       <PageBreadcrumbs items={[{ name: 'MailSlurp alternative', path: '/compare/mailslurp' }]} />
       <h1 className="text-4xl font-bold tracking-[-0.04em]">MailSlurp alternative: InboxRhino vs MailSlurp</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600">
-        Looking for a MailSlurp alternative for email-only Playwright or Cypress tests? MailSlurp is a broad email-and-SMS QA platform with many language SDKs. InboxRhino is a narrower receive-only MX inbox with a sandboxed HTML viewer and INR billing designed for Indian teams. Choose InboxRhino when you only need signup, OTP, magic-link, or password-reset mail and want a free tier plus a visual console. Choose MailSlurp when you need SDKs, SMS numbers, placement tests, or a larger free sandbox. Confirm current MailSlurp behaviour on{' '}
+        Choose InboxRhino if your Playwright or Cypress tests need receive-only, real-MX email for signup, OTP, magic links, or password resets with a sandboxed viewer and live free tier. Choose MailSlurp if you need official SDKs, SMS, OTP helpers, or a larger free sandbox. Check MailSlurp&apos;s site for current features and pricing before deciding: {' '}
         <a href="https://www.mailslurp.com" className="font-bold text-[#0F3D3E]" rel="noopener noreferrer">
           mailslurp.com
         </a>
         .
+      </p>
+
+      <p className="mt-5 max-w-2xl text-sm leading-6 text-stone-600">
+        Using this from Playwright? Follow the official{' '}
+        <a href="/docs/playwright" className="font-bold text-[#0F3D3E]">Playwright email testing guide</a>{' '}
+        to create a real inbox, wait for a message, and clean it up. You can also start with the{' '}
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">API quickstart</a>.
       </p>
 
       <section className="mt-10 space-y-4 text-sm leading-6 text-stone-700">
@@ -83,6 +90,10 @@ export default function CompareMailslurpPage() {
         <a href="/pricing" className="font-bold text-[#0F3D3E]">
           InboxRhino pricing
         </a>
+        ,{' '}
+        <a href="/docs/quickstart" className="font-bold text-[#0F3D3E]">API quickstart</a>
+        , <a href="/compare/mailhog" className="font-bold text-[#0F3D3E]">MailHog alternative</a>
+        , and <a href="/compare/tigrmail" className="font-bold text-[#0F3D3E]">InboxRhino vs Tigrmail</a>
         .
       </p>
     </main>
