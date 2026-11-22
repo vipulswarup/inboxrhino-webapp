@@ -25,7 +25,7 @@ export function MarketingMailboxDemo() {
               <LogoIcon size={36} priority />
               <span className="hidden text-[15px] font-bold tracking-[-0.02em] text-[#1C1917] sm:block">InboxRhino</span>
             </div>
-            <nav aria-label="Breadcrumb" className="hidden items-center gap-2 text-sm text-stone-500 md:flex">
+            <nav aria-label="Breadcrumb" className="hidden items-center gap-2 text-sm text-stone-600 md:flex">
               <span>Mailboxes</span>
               <span aria-hidden="true">/</span>
               <span className="font-medium text-stone-900">{localPart}</span>
@@ -44,8 +44,8 @@ export function MarketingMailboxDemo() {
           <aside className="flex border-b border-r border-[#1C1917]/10 bg-[var(--brand-cream)] p-2 md:flex-col md:py-4">
             <nav aria-label="Primary navigation" className="flex flex-1 gap-1 md:flex-col md:gap-2">
               <span className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[var(--brand-teal)] px-3 py-3 text-sm font-semibold text-[#F7F4EF] md:w-full md:flex-none md:justify-start">Mailboxes</span>
-              <span className="flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-stone-500 md:w-full md:flex-none md:justify-start">API Keys</span>
-              <span className="flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-stone-500 md:w-full md:flex-none md:justify-start">Usage</span>
+              <span className="flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-stone-600 md:w-full md:flex-none md:justify-start">API Keys</span>
+              <span className="flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm text-stone-600 md:w-full md:flex-none md:justify-start">Usage</span>
             </nav>
           </aside>
 
@@ -55,7 +55,7 @@ export function MarketingMailboxDemo() {
               <p className="mt-1 text-lg font-bold tracking-[-0.025em]">{localPart}</p>
               <p className="mt-4 truncate rounded-xl border border-stone-200 bg-white px-3 py-2.5 font-mono text-[11px] text-stone-600">{active.recipient}</p>
             </div>
-            <p className="px-5 py-3 text-xs text-stone-500">{messages.length} messages</p>
+            <p className="px-5 py-3 text-xs text-stone-600">{messages.length} messages</p>
             <div role="list" className="max-h-80 space-y-1 overflow-y-auto px-2 md:max-h-[65vh]">
               {messages.map((message) => {
                 const isActive = message.id === active.id;
@@ -65,10 +65,10 @@ export function MarketingMailboxDemo() {
                       <div className="flex items-center gap-2">
                         {message.unread ? <span aria-label="Unread" className="size-1.5 shrink-0 rounded-full bg-[var(--brand-teal)]" /> : null}
                         <span className={`min-w-0 flex-1 truncate text-sm ${message.unread ? 'font-bold' : 'font-semibold'}`}>{message.senderName}</span>
-                        <time className="shrink-0 text-[11px] text-stone-500">{message.receivedAt}</time>
+                        <time className="shrink-0 text-[11px] text-stone-600">{message.receivedAt}</time>
                       </div>
                       <p className={`mt-1 truncate text-[13px] ${message.unread ? 'font-semibold text-stone-800' : 'text-stone-700'}`}>{message.subject}</p>
-                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-stone-500">{message.preview}</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-stone-600">{message.preview}</p>
                     </div>
                   </div>
                 );
@@ -80,12 +80,12 @@ export function MarketingMailboxDemo() {
             <div className="border-b border-stone-200 px-4 py-4 sm:px-7 sm:py-5">
               <div className="mb-2 flex items-center gap-2">
                 <span className="rounded-full bg-[#F4F1EA] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--brand-teal)]">Received</span>
-                <time className="text-xs text-stone-500">{active.dateLabel}</time>
+                <time className="text-xs text-stone-600">{active.dateLabel}</time>
               </div>
               <p className="truncate text-xl font-bold tracking-[-0.03em] text-stone-950 sm:text-2xl">{active.subject}</p>
               <p className="mt-3 text-sm">
                 <span className="font-semibold">{active.senderName}</span>
-                <span className="ml-1 text-stone-500">&lt;{active.senderEmail}&gt;</span>
+                <span className="ml-1 text-stone-600">&lt;{active.senderEmail}&gt;</span>
               </p>
             </div>
             <div className="bg-[var(--brand-cream-deep)] p-3 sm:p-6">

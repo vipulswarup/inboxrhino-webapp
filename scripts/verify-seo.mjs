@@ -19,6 +19,8 @@ const PUBLIC_PATHS = [
   '/compare/testmail',
   '/india',
   '/legal',
+  '/privacy',
+  '/terms',
 ];
 
 function fail(message) {

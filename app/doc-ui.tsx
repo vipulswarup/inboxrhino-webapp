@@ -25,7 +25,7 @@ export function Endpoint({
         <MethodBadge method={method} />
         <h3 className="font-mono text-base font-bold">{path}</h3>
       </div>
-      <p className="text-xs text-stone-500">
+      <p className="text-xs text-stone-600">
         operationId: <code className="font-mono">{operationId}</code>
       </p>
       {children}
@@ -43,7 +43,7 @@ export function SpecTable({
   return (
     <div className="overflow-x-auto rounded-xl border border-[#1C1917]/10 bg-white">
       <table className="w-full min-w-[520px] text-left text-sm">
-        <thead className="border-b border-[#1C1917]/10 bg-[#F7F4EF] text-xs uppercase tracking-wide text-stone-500">
+        <thead className="border-b border-[#1C1917]/10 bg-[#F7F4EF] text-xs uppercase tracking-wide text-stone-600">
           <tr>
             {headers.map((header) => (
               <th key={header} className="px-3 py-2 font-bold">

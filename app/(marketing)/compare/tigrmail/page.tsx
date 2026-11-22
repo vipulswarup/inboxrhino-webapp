@@ -61,7 +61,7 @@ export default function CompareTigrmailPage() {
 
       <CompareTable heading="Features and pricing: InboxRhino vs Tigrmail" columns={['Capability', 'InboxRhino', 'Tigrmail']} rows={rows} />
 
-      <p className="mt-6 text-xs leading-5 text-stone-500">
+      <p className="mt-6 text-xs leading-5 text-stone-600">
         Compared on 6 September 2026 from InboxRhino&apos;s live product and Tigrmail&apos;s public site. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
       </p>
       <CompareFaq faqs={faqs} />

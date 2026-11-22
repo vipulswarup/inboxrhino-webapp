@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { GoogleAnalytics } from './google-analytics';
-import { AHREFS_ANALYTICS_KEY, SITE_ORIGIN } from './lib/site';
+import { CookieConsent } from './cookie-consent';
+import { SITE_ORIGIN } from './lib/site';
 import { pageMeta } from './lib/seo';
 import './globals.css';
 
@@ -28,12 +28,6 @@ export const metadata: Metadata = {
   },
 };
 
-const ahrefsLoader = `var ahrefs_analytics_script = document.createElement('script');
-  ahrefs_analytics_script.async = true;
-  ahrefs_analytics_script.src = 'https://analytics.ahrefs.com/analytics.js';
-  ahrefs_analytics_script.setAttribute('data-key', '${AHREFS_ANALYTICS_KEY}');
-  document.getElementsByTagName('head')[0].appendChild(ahrefs_analytics_script);`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -41,12 +35,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: ahrefsLoader }} />
-      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
-        <GoogleAnalytics />
+        <CookieConsent />
       </body>
     </html>
   );

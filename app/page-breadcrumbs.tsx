@@ -22,7 +22,7 @@ export function PageBreadcrumbs({ items }: { items: Crumb[] }) {
                   </a>
                 )}
                 {last ? null : (
-                  <span aria-hidden="true" className="text-stone-400">
+                  <span aria-hidden="true" className="text-stone-600">
                     /
                   </span>
                 )}

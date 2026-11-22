@@ -18,19 +18,16 @@ export async function SiteHeader() {
   const loginHref = consoleHref((await headers()).get('host'), '/login');
   return (
     <header className="border-b border-[#1C1917]/10 bg-[#F7F4EF]">
-      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
+      <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <Link href="/" aria-label="InboxRhino home">
           <LogoWordmark />
         </Link>
-        <nav className="flex items-center gap-2 text-sm sm:gap-4">
+        <nav aria-label="Main navigation" className="flex flex-wrap items-center gap-2 text-sm sm:gap-4">
           {nav.map((item) => (
-            <Link key={item.href} href={item.href} className="hidden px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E] sm:inline">
+            <Link key={item.href} href={item.href} className="px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E]">
               {item.label}
             </Link>
           ))}
-          <a href={loginHref} title="Sign in to the InboxRhino console" className="px-2 py-1 font-semibold text-stone-700 hover:text-[#0F3D3E]">
-            Console sign in
-          </a>
           <a href={loginHref} className="rounded-lg bg-[#0F3D3E] px-3 py-1.5 text-sm font-bold text-white">
             Create a free test inbox
           </a>
@@ -113,9 +110,8 @@ export function SiteFooter() {
               <Link href="/about" className={linkClass}>
                 About
               </Link>
-              <Link href="/legal" className={linkClass}>
-                Privacy and terms
-              </Link>
+              <Link href="/privacy" className={linkClass}>Privacy policy</Link>
+              <Link href="/terms" className={linkClass}>Terms and conditions</Link>
               <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
                 {CONTACT_EMAIL}
               </a>

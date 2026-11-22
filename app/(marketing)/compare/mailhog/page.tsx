@@ -65,7 +65,7 @@ export default function CompareMailhogPage() {
 
       <CompareTable heading="Features compared: InboxRhino vs MailHog and Mailpit" columns={['Capability', 'InboxRhino', 'MailHog / Mailpit']} rows={rows} />
 
-      <p className="mt-6 text-xs leading-5 text-stone-500">
+      <p className="mt-6 text-xs leading-5 text-stone-600">
         Compared on 7 September 2026 from InboxRhino&apos;s live product, Mailpit&apos;s public docs, and MailHog&apos;s GitHub status. Local-catcher behaviour can change with your Docker setup. InboxRhino paid checkout is not live.
       </p>
       <CompareFaq faqs={faqs} />

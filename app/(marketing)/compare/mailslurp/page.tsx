@@ -69,7 +69,7 @@ export default function CompareMailslurpPage() {
 
       <CompareTable heading="Features and pricing: InboxRhino vs MailSlurp" columns={['Capability', 'InboxRhino', 'MailSlurp']} rows={rows} />
 
-      <p className="mt-6 text-xs leading-5 text-stone-500">
+      <p className="mt-6 text-xs leading-5 text-stone-600">
         Compared on 11 September 2026 from InboxRhino&apos;s live product and MailSlurp&apos;s public site and pricing page. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
       </p>
       <CompareFaq faqs={faqs} />

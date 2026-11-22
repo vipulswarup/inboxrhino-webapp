@@ -33,6 +33,8 @@ export const PUBLIC_PATHS = [
   '/compare/testmail',
   '/india',
   '/legal',
+  '/privacy',
+  '/terms',
 ] as const;
 
 // Sitemap <lastmod> per public page. Bump the date when a page's content
@@ -53,7 +55,9 @@ export const PAGE_LAST_MODIFIED: Record<(typeof PUBLIC_PATHS)[number], string> =
   '/compare/mailslurp': '2026-11-13',
   '/compare/testmail': '2026-10-22',
   '/india': '2026-09-11',
-  '/legal': '2026-09-29',
+  '/legal': '2026-11-22',
+  '/privacy': '2026-11-22',
+  '/terms': '2026-11-22',
 };
 
 export const APP_ROBOTS_TXT = 'User-Agent: *\nDisallow: /\n';

@@ -184,3 +184,26 @@ The test suite covers console-generated API key → API-created mailbox → MIME
 ## Next milestones
 
 Phase A's sign-in, console, key management and public documentation are implemented. Complete production smoke testing for each release and address any operational issues before paid billing. Phase B remains INR checkout, paid quotas, multi-user organisations and optional TOTP MFA; those are separate from the free console release.
+
+## Launch readiness (22 November 2026)
+
+The public site includes separate `/privacy` and `/terms` pages, metadata and social cards, SVG/ICO/Apple favicons, sitemap and robots routes, and a custom 404. The main call to action is **Create a free test inbox**. Mobile navigation exposes all public sections; forms enforce input limits, and keyboard focus uses an opaque teal outline.
+
+Google Analytics runs only after an explicit opt-in on public marketing pages. Cookie settings allows rejection or withdrawal; preferences expire after 180 days. Console and login pages are excluded, and page-view URLs omit queries and fragments. The standalone news proxy no longer injects analytics. The Google Analytics property is already configured; verify receipt of a consented visit in its dashboard after deployment. Localhost intentionally sends no analytics.
+
+Private credentials remain in API Worker bindings. Only reviewed public identifiers may use `NEXT_PUBLIC_*`; the Vite configuration rejects other public variable names without displaying their values. Firebase browser configuration and the Turnstile site key are public identifiers. Set a real `NEXT_PUBLIC_TURNSTILE_SITE_KEY` for production and `TURNSTILE_SECRET_KEY` on the backend. Missing production site keys fail closed. Turnstile verification and signup rate limits are enforced by the API; a fresh challenge is rendered after each login attempt. Firebase Auth also needs its provider-side abuse protections configured independently because clients can contact Firebase directly.
+
+HTTPS redirects and HSTS already protect the website. The API now redirects HTTP requests with status 308, preserving the method and path. Cloudflare must continue to serve valid TLS certificates for production hosts.
+
+Validation completed locally: 75 tests; TypeScript; ESLint (one existing warning in `worker/mta-sts.ts`); production web build; Worker deployment dry-run; SEO verification; 19 sitemap pages; 24 internal link targets; 10 external links; custom 404; mobile homepage and privacy page without horizontal overflow; all audited images have alt attributes. No broken links were found. Existing PNG assets were reduced by 125,122 bytes, including a 26% reduction in the default social image. New social cards cover privacy, terms and Cypress docs.
+
+The local production page responses took 5–12 ms with a gzipped homepage HTML size of about 16 KB. These are local HTTP timings, not deployed Core Web Vitals or a Lighthouse score. Real-network performance, production analytics receipt and live form submissions remain deployment checks. Policy text reflects the current implementation and existing company/retention details; it has not received legal review.
+
+Run a read-only audit against a running build:
+
+```bash
+AUDIT_ORIGIN=http://localhost:4317 AUDIT_EXTERNAL=1 npm run verify:launch
+SEO_ORIGIN=http://localhost:4317 npm run verify:seo
+```
+
+The launch audit checks rendered titles/descriptions, alt attributes, pre-consent tracking scripts, linked routes, same-page anchors, 404 behavior, and local response size/timing. External checks are optional; timeouts and network restrictions are reported as unverified.

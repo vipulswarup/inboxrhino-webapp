@@ -51,6 +51,11 @@ const MAX_KEY_LONG_POLLS = 10;
 export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use('*', async (c, next) => {
+  const requestUrl = new URL(c.req.url);
+  if (requestUrl.hostname.endsWith('.inboxrhino.in') && requestUrl.protocol === 'http:') {
+    requestUrl.protocol = 'https:';
+    return c.redirect(requestUrl.toString(), 308);
+  }
   c.set('requestId', c.req.header('CF-Ray') ?? crypto.randomUUID());
   await next();
   c.header('X-Request-Id', c.get('requestId'));

@@ -70,7 +70,7 @@ export default function CompareMailosaurPage() {
 
       <CompareTable heading="Features and pricing: InboxRhino vs Mailosaur" columns={['Capability', 'InboxRhino', 'Mailosaur']} rows={rows} />
 
-      <p className="mt-6 text-xs leading-5 text-stone-500">
+      <p className="mt-6 text-xs leading-5 text-stone-600">
         Compared on 7 September 2026 from InboxRhino&apos;s live product and Mailosaur&apos;s public site and pricing page. Competitor cells can change; re-check before you buy. InboxRhino paid checkout is not live.
       </p>
       <CompareFaq faqs={faqs} />

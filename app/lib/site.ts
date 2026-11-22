@@ -36,10 +36,9 @@ export const homeFaqs = [
   },
 ] as const;
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-JWMSV0FTTY';
-export const AHREFS_ANALYTICS_KEY = process.env.NEXT_PUBLIC_AHREFS_ANALYTICS_KEY || '2k1nGNd6PVGmi9GCM8VKtg';
 
 export function isPublicAnalyticsHost(hostname: string) {
-  return hostname === 'inboxrhino.in' || hostname === 'www.inboxrhino.in' || hostname === 'app.inboxrhino.in';
+  return hostname === 'inboxrhino.in' || hostname === 'www.inboxrhino.in';
 }
 
 export const OPENAPI_PATH = '/openapi.yaml';

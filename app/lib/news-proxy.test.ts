@@ -30,9 +30,8 @@ describe('news proxy', () => {
     expect(response.headers.get('set-cookie')).toBeNull();
     const html = await response.text();
     expect(html).toContain('News');
-    expect(html).toContain('https://analytics.ahrefs.com/analytics.js');
-    expect(html).toContain('https://www.googletagmanager.com/gtag/js');
-    expect(html).toContain("window.gtag('config',\"G-JWMSV0FTTY\")");
+    expect(html).not.toContain('analytics.ahrefs.com');
+    expect(html).not.toContain('googletagmanager.com');
     expect(String(fetchMock.mock.calls[0][0])).toBe('https://www.stork.ai/wire/w1yiv89paodcwwi5u?source=test');
   });
 

@@ -15,7 +15,7 @@ export function CompareTable({
       <h2 className="text-xl font-bold text-[#1C1917]">{heading}</h2>
       <div className="mt-4 overflow-x-auto rounded-[22px] border border-[#1C1917]/10 bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-[#1C1917]/10 bg-[#F7F4EF] text-xs uppercase tracking-wide text-stone-500">
+          <thead className="border-b border-[#1C1917]/10 bg-[#F7F4EF] text-xs uppercase tracking-wide text-stone-600">
             <tr>
               {columns.map((column) => (
                 <th key={column} className="px-4 py-3 font-bold">

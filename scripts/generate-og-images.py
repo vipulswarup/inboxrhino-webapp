@@ -37,6 +37,9 @@ MUTED = (87, 83, 78)
 
 # path -> (eyebrow, headline, subline)
 PAGES = {
+    '/privacy': ('Privacy', 'Your data. Your choice.', 'Privacy, retention and optional analytics'),
+    '/terms': ('Terms', 'Terms and conditions', 'Clear rules for receive-only email testing'),
+    '/docs/cypress': ('Docs', 'Cypress email testing', 'Real inboxes for end-to-end signup tests'),
     '/about': ('About', 'About InboxRhino', 'From the makers of EisenVault'),
     '/pricing': ('Pricing', 'InboxRhino pricing', 'Free tier: 11 inboxes and 33 emails a month'),
     '/blog': ('Blog', 'Email testing for agents and CI', 'Notes from the InboxRhino team'),

@@ -6,7 +6,7 @@ import { turnstileSiteKey } from './lib/console-api';
 declare global {
   interface Window {
     turnstile?: {
-      render: (element: HTMLElement, options: { sitekey: string; action: string; callback: (token: string) => void; 'expired-callback'?: () => void; 'error-callback'?: () => void }) => string;
+      render: (element: HTMLElement, options: { sitekey: string; action: string; size: 'flexible'; callback: (token: string) => void; 'expired-callback'?: () => void; 'error-callback'?: () => void }) => string;
       reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
     };
@@ -24,7 +24,7 @@ export function TurnstileWidget({ onToken, onExpire }: TurnstileWidgetProps) {
   const onTokenRef = useRef(onToken);
   const onExpireRef = useRef(onExpire);
   const [ready, setReady] = useState(
-    () => typeof document !== 'undefined' && Boolean(document.querySelector('script[data-turnstile="true"]')),
+    () => typeof window !== 'undefined' && Boolean(window.turnstile),
   );
 
   useEffect(() => {
@@ -34,25 +34,26 @@ export function TurnstileWidget({ onToken, onExpire }: TurnstileWidgetProps) {
 
   useEffect(() => {
     if (ready) return;
-    const existing = document.querySelector('script[data-turnstile="true"]');
-    if (existing) {
-      const timeout = window.setTimeout(() => setReady(true), 0);
-      return () => window.clearTimeout(timeout);
+    const existing = document.querySelector<HTMLScriptElement>('script[data-turnstile="true"]');
+    const script = existing ?? document.createElement('script');
+    const loaded = () => setReady(true);
+    script.addEventListener('load', loaded);
+    if (!existing) {
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.dataset.turnstile = 'true';
+      document.head.appendChild(script);
     }
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-    script.async = true;
-    script.defer = true;
-    script.dataset.turnstile = 'true';
-    script.onload = () => setReady(true);
-    document.head.appendChild(script);
+    return () => script.removeEventListener('load', loaded);
   }, [ready]);
 
   useEffect(() => {
-    if (!ready || !containerRef.current || !window.turnstile) return;
+    if (!ready || !containerRef.current || !window.turnstile || !turnstileSiteKey) return;
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: turnstileSiteKey,
       action: 'signup',
+      size: 'flexible',
       callback: (token) => onTokenRef.current(token),
       'expired-callback': () => onExpireRef.current?.(),
       'error-callback': () => onExpireRef.current?.(),
@@ -63,5 +64,6 @@ export function TurnstileWidget({ onToken, onExpire }: TurnstileWidgetProps) {
     };
   }, [ready]);
 
+  if (!turnstileSiteKey) return <p role="alert" className="text-sm text-red-700">Verification is unavailable. Please contact contact@inboxrhino.in.</p>;
   return <div ref={containerRef} className="min-h-[65px]" />;
 }

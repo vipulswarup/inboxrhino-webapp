@@ -24,7 +24,8 @@
     "typecheck": "tsc --noEmit",
     "verify:seo": "node scripts/verify-seo.mjs",
     "deploy:web": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --config dist/server/wrangler.json --keep-vars",
-    "release:web": "npm run check && npm run build && npm run deploy:web"
+    "release:web": "npm run check && npm run build && npm run deploy:web",
+    "verify:launch": "node scripts/audit-launch.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

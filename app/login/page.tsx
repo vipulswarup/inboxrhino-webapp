@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [challengeAttempt, setChallengeAttempt] = useState(0);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -31,6 +32,7 @@ export default function LoginPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (submitting) return;
     if (!turnstileToken) {
       setMessage('Complete the verification challenge first.');
       return;
@@ -52,6 +54,8 @@ export default function LoginPage() {
       resetTurnstile();
     } finally {
       setSubmitting(false);
+      resetTurnstile();
+      setChallengeAttempt((attempt) => attempt + 1);
     }
   };
 
@@ -69,6 +73,8 @@ export default function LoginPage() {
       resetTurnstile();
     } finally {
       setSubmitting(false);
+      resetTurnstile();
+      setChallengeAttempt((attempt) => attempt + 1);
     }
   };
 
@@ -79,7 +85,7 @@ export default function LoginPage() {
           <LogoIcon size={40} priority />
           <div>
             <h1 className="text-lg font-bold tracking-[-0.02em]">Sign in</h1>
-            <p className="text-sm text-stone-500">Sign in to your test inbox console</p>
+            <p className="text-sm text-stone-600">Sign in to your test inbox console</p>
           </div>
         </div>
 
@@ -104,6 +110,8 @@ export default function LoginPage() {
             <span className="mb-1 block font-semibold">Email</span>
             <input
               type="email"
+              autoComplete="email"
+              maxLength={320}
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -117,6 +125,8 @@ export default function LoginPage() {
                 type="password"
                 required
                 minLength={6}
+                maxLength={4096}
+                autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="w-full rounded-lg border border-stone-300 px-3 py-2 outline-none focus:border-[#0F3D3E]"
@@ -124,14 +134,14 @@ export default function LoginPage() {
             </label>
           ) : null}
 
-          <TurnstileWidget onToken={setTurnstileToken} onExpire={resetTurnstile} />
+          <TurnstileWidget key={challengeAttempt} onToken={setTurnstileToken} onExpire={resetTurnstile} />
 
-          {message ? <p className="text-sm text-stone-700">{message}</p> : null}
-          {auth.error ? <p className="text-sm text-red-700">{auth.error}</p> : null}
+          {message ? <p role="status" className="text-sm text-stone-700">{message}</p> : null}
+          {auth.error ? <p role="alert" className="text-sm text-red-700">{auth.error}</p> : null}
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !turnstileToken}
             className="w-full rounded-lg bg-[#0F3D3E] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
           >
             {mode === 'sign-in' ? 'Sign in' : mode === 'sign-up' ? 'Create account' : 'Send reset link'}
@@ -141,7 +151,7 @@ export default function LoginPage() {
         {mode !== 'reset' ? (
           <button
             type="button"
-            disabled={submitting}
+            disabled={submitting || !turnstileToken}
             onClick={signInWithGoogle}
             className="mt-3 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-800 disabled:opacity-60"
           >
@@ -149,15 +159,17 @@ export default function LoginPage() {
           </button>
         ) : null}
 
-        <p className="mt-6 text-center text-xs text-stone-500">
+        <p className="mt-6 text-center text-xs text-stone-600">
           By continuing you agree to use InboxRhino for testing only.{' '}
           <a href={SITE_ORIGIN} className="font-semibold text-[#0F3D3E]">
             InboxRhino home
           </a>
           {' · '}
-          <a href={`${SITE_ORIGIN}/legal`} className="font-semibold text-[#0F3D3E]">
-            Privacy and terms
+          <a href={`${SITE_ORIGIN}/privacy`} className="font-semibold text-[#0F3D3E]">
+            Privacy policy
           </a>
+          {' · '}
+          <a href={`${SITE_ORIGIN}/terms`} className="font-semibold text-[#0F3D3E]">Terms and conditions</a>
         </p>
       </div>
     </main>

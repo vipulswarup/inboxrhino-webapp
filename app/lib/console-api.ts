@@ -11,7 +11,7 @@ export const apiBase = resolveApiBase();
 export const turnstileSiteKey =
   typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? '1x00000000000000000000AA'
-    : (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '1x00000000000000000000AA');
+    : (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '');
 
 export type SessionResponse = {
   user: { id: string; email: string; display_name: string | null; email_verified: boolean };

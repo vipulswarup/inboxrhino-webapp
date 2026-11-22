@@ -43,7 +43,7 @@ export async function MarketingHome() {
             <a href={loginHref} className="rounded-lg bg-[#0F3D3E] px-4 py-2.5 text-sm font-bold text-white">
               Create a free test inbox
             </a>
-            <a href="/docs/quickstart" className="rounded-lg border border-[#1C1917]/15 px-4 py-2.5 text-sm font-bold text-[#1C1917]">
+            <a href="/docs/quickstart" className="px-1 py-2.5 text-sm font-semibold text-[#0F3D3E] underline underline-offset-4">
               Read the InboxRhino API quickstart
             </a>
           </div>

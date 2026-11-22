@@ -38,8 +38,11 @@ a {
 
 button:focus-visible,
 a:focus-visible,
-[role='tab']:focus-visible {
-  outline: 3px solid rgb(15 61 62 / 28%);
+[role='tab']:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--brand-teal);
   outline-offset: 2px;
 }
 
@@ -47,3 +50,8 @@ a:focus-visible,
   background: rgb(15 61 62 / 20%);
   color: var(--brand-ink);
 }
+
+/* Keep grid children and long code samples within narrow screens. */
+main, section, article { min-width: 0; }
+img { max-width: 100%; height: auto; }
+pre { max-width: 100%; overflow-x: auto; }

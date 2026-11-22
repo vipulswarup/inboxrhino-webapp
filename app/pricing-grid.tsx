@@ -18,9 +18,9 @@ export function PricingGrid({ compact = false }: { compact?: boolean }) {
           </div>
           <p className="mt-4 text-3xl font-bold tracking-[-0.03em]">
             {plan.name === 'Starter' ? '₹0' : plan.price}
-            {plan.name !== 'Free' && plan.name !== 'Starter' ? <span className="text-sm font-semibold text-stone-500"> / month</span> : null}
+            {plan.name !== 'Free' && plan.name !== 'Starter' ? <span className="text-sm font-semibold text-stone-600"> / month</span> : null}
           </p>
-          {plan.name === 'Starter' ? <p className="mt-1 text-xs text-stone-500">Complimentary with an access code. Planned price: ₹199/month; checkout is not open.</p> : plan.annual ? <p className="mt-1 text-xs text-stone-500">{plan.annual} billed annually</p> : <p className="mt-1 text-xs text-stone-500">Enough to wire one flow</p>}
+          {plan.name === 'Starter' ? <p className="mt-1 text-xs text-stone-600">Complimentary with an access code. Planned price: ₹199/month; checkout is not open.</p> : plan.annual ? <p className="mt-1 text-xs text-stone-600">{plan.annual} billed annually</p> : <p className="mt-1 text-xs text-stone-600">Enough to wire one flow</p>}
           <ul className="mt-5 space-y-2 text-sm text-stone-700">
             <li>{plan.inboxes.toLocaleString('en-IN')} active inboxes</li>
             <li>{plan.emails.toLocaleString('en-IN')} emails / month</li>
