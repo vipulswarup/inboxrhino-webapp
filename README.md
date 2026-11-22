@@ -1,6 +1,6 @@
 # InboxRhino
 
-InboxRhino is a Cloudflare-hosted, receive-only email API for end-to-end tests. It creates real addresses on `test.inboxrhino.in`, receives mail through Cloudflare Email Routing, stores parsed message content in D1 and R2, and exposes it through a versioned REST API.
+InboxRhino is a [Cloudflare-hosted, receive-only email API](https://inboxrhino.in) for end-to-end tests. It creates real addresses on `test.inboxrhino.in`, receives mail through Cloudflare Email Routing, stores parsed message content in D1 and R2, and exposes it through a versioned REST API.
 
 The current release includes the free-tier API, Firebase sign-in, self-service organisation provisioning and API-key management, and an authenticated live console.
 
